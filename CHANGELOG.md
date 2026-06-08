@@ -13,7 +13,7 @@ If you like this project and find it useful, please consider giving it a star on
 ### Added
 
 - Add `Power Source` device type.
-- Add `Soil Measurement` device type.
+- Add `Soil Sensor` device type.
 
 ### Changed
 
