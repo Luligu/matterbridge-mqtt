@@ -1,6 +1,6 @@
 {
   "name": "matterbridge-mqtt",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Matterbridge mqtt plugin",
   "author": "https://github.com/Luligu",
   "license": "Apache-2.0",
@@ -138,7 +138,7 @@
     "@jest/globals": "30.4.1",
     "@types/jest": "30.0.0",
     "@types/node": "25.9.2",
-    "@typescript/native-preview": "7.0.0-dev.20260607.1",
+    "@typescript/native-preview": "7.0.0-dev.20260608.1",
     "cross-env": "10.1.0",
     "jest": "30.4.2",
     "npm-check-updates": "22.2.3",
