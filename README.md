@@ -7,7 +7,15 @@
 [![Docker Version](https://img.shields.io/docker/v/luligu/matterbridge/latest?label=docker%20version)](https://hub.docker.com/r/luligu/matterbridge)
 [![Docker Pulls](https://img.shields.io/docker/pulls/luligu/matterbridge?label=docker%20pulls)](https://hub.docker.com/r/luligu/matterbridge)
 ![Node.js CI](https://github.com/Luligu/matterbridge-mqtt/actions/workflows/build.yml/badge.svg)
-![Jest coverage](https://img.shields.io/badge/Jest%20coverage-100%25-brightgreen)
+![CodeQL](https://github.com/Luligu/matterbridge-mqtt/actions/workflows/codeql.yml/badge.svg)
+[![codecov](https://codecov.io/gh/Luligu/matterbridge-mqtt/branch/main/graph/badge.svg)](https://codecov.io/gh/Luligu/matterbridge-mqtt)
+[![formatted with oxfmt](https://img.shields.io/badge/formatted_with-oxfmt-9BE4E0.svg)](https://oxc.rs/docs/guide/usage/formatter.html)
+[![linted with oxlint](https://img.shields.io/badge/linted_with-oxlint-9BE4E0.svg)](https://oxc.rs/docs/guide/usage/linter.html)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![tsgo](https://img.shields.io/badge/tsgo-3178C6?logo=typescript&logoColor=white)](https://github.com/microsoft/typescript-go)
+[![ESM](https://img.shields.io/badge/ESM-Node.js-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![matterbridge.io](https://img.shields.io/badge/matterbridge.io-online-brightgreen)](https://matterbridge.io)
+![under development](https://img.shields.io/badge/status-under%20development-orange)
 
 [![powered by](https://img.shields.io/badge/powered%20by-matterbridge-blue)](https://www.npmjs.com/package/matterbridge)
 [![powered by](https://img.shields.io/badge/powered%20by-matter--history-blue)](https://www.npmjs.com/package/matter-history)
@@ -76,3 +84,13 @@ It will receive all Matter commands.
 Topic: 'matterbridge/deviceid/command/root'
 Payload: "{"cluster":"OnOff","command":"on","request": MatterRequest | undefined }"
 ```
+
+---
+
+# Todo
+
+- [ ] Command handler
+- [ ] Attributes handler in config
+- [ ] Add Chapter 8. Entry Control Device Types
+- [ ] Add Chapter 9. HVAC Device Types
+- [ ] Add composed device types
