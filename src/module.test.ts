@@ -132,7 +132,7 @@ describe('MqttPlatform', () => {
       'message',
       `${config.topic}/light1/config/root`,
       JSON.stringify({
-        deviceTypes: ['OnOffLight'],
+        deviceTypes: ['OnOff Light'],
         clusters: {
           BridgedDeviceBasicInformation: { nodeLabel: 'Light 1' },
           LevelControl: { onLevel: 128 },
@@ -212,7 +212,7 @@ describe('MqttPlatform', () => {
     });
 
     it('should log info for a config message', () => {
-      platform.mqttMessageHandler(`${config.topic}/light1/config/root`, JSON.stringify({ deviceTypes: ['OnOffLight'] }));
+      platform.mqttMessageHandler(`${config.topic}/light1/config/root`, JSON.stringify({ deviceTypes: ['OnOff Light'] }));
       expect(loggerInfoSpy).toHaveBeenCalledWith(expect.stringMatching(/Received/));
     });
 
@@ -230,18 +230,18 @@ describe('MqttPlatform', () => {
 
   describe('createrDevice', () => {
     it('should log debug when creating a device', () => {
-      platform.createrDevice('light1', 'root', { deviceTypes: ['OnOffLight'], clusters: {} });
+      platform.createrDevice('light1', 'root', { deviceTypes: ['OnOff Light'], clusters: {} });
       expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Creating device with ID light1/));
     });
 
     it('should create a device without BridgedDeviceBasicInformation cluster', () => {
-      platform.createrDevice('light2', 'root', { deviceTypes: ['OnOffLight'], clusters: {} });
+      platform.createrDevice('light2', 'root', { deviceTypes: ['OnOff Light'], clusters: {} });
       expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Creating device with ID light2/));
     });
 
     it('should create a device with BridgedDeviceBasicInformation cluster attributes', () => {
       platform.createrDevice('light3', 'root', {
-        deviceTypes: ['OnOffLight'],
+        deviceTypes: ['OnOff Light'],
         clusters: {
           BridgedDeviceBasicInformation: {
             nodeLabel: 'My Light',
