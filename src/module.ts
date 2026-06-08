@@ -57,6 +57,9 @@ import {
 } from 'matterbridge';
 import { type AnsiLogger, debugStringify, info, warn } from 'matterbridge/logger';
 import type { AtLeastOne } from 'matterbridge/matter';
+import { SoilMeasurementServer } from 'matterbridge/matter/behaviors';
+import type { BridgedDeviceBasicInformation, PowerSource } from 'matterbridge/matter/clusters';
+import { MeasurementType } from 'matterbridge/matter/types';
 import { fireAndForget, inspectError } from 'matterbridge/utils';
 
 import { MqttService } from './mqtt.js';
@@ -296,33 +299,77 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       }
     }
     deviceTypes.push(bridgedNode); // All devices must include the Bridged Node device type as per spec since we are creating bridged devices
-    const info: {
-      NodeLabel?: string;
-      SerialNumber?: string;
-      VendorId?: number;
-      VendorName?: string;
-      ProductName?: string;
-      SoftwareVersion?: number;
-      SoftwareVersionString?: string;
-      HardwareVersion?: number;
-      HardwareVersionString?: string;
-    } = jsonPayload.clusters.BridgedDeviceBasicInformation || {};
+    const bridgedDeviceBasicInformationCluster: Partial<BridgedDeviceBasicInformation.Attributes> = jsonPayload.clusters.BridgedDeviceBasicInformation || {};
+    const powerSourceCluster: Partial<PowerSource.Attributes> = jsonPayload.clusters.PowerSource || {};
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const device = new MatterbridgeEndpoint(deviceTypes as AtLeastOne<DeviceTypeDefinition>, {
       id: deviceId,
-    })
-      .createDefaultBridgedDeviceBasicInformationClusterServer(
-        info.NodeLabel ?? deviceId,
-        info.SerialNumber ?? deviceId,
-        info.VendorId,
-        info.VendorName,
-        info.ProductName,
-        info.SoftwareVersion,
-        info.SoftwareVersionString,
-        info.HardwareVersion,
-        info.HardwareVersionString,
-      )
-      .addRequiredClusters();
+    });
+    /** Bridged Device Basic Information Cluster */
+    device.createDefaultBridgedDeviceBasicInformationClusterServer(
+      bridgedDeviceBasicInformationCluster.nodeLabel ?? deviceId,
+      bridgedDeviceBasicInformationCluster.serialNumber ?? deviceId,
+      bridgedDeviceBasicInformationCluster.vendorId,
+      bridgedDeviceBasicInformationCluster.vendorName,
+      bridgedDeviceBasicInformationCluster.productName,
+      bridgedDeviceBasicInformationCluster.softwareVersion,
+      bridgedDeviceBasicInformationCluster.softwareVersionString,
+      bridgedDeviceBasicInformationCluster.hardwareVersion,
+      bridgedDeviceBasicInformationCluster.hardwareVersionString,
+    );
+    /** Power Source Cluster */
+    if (jsonPayload.deviceTypes.includes('Power Source')) {
+      if (powerSourceCluster.batReplacementDescription !== undefined || powerSourceCluster.batQuantity !== undefined) {
+        device.createDefaultPowerSourceReplaceableBatteryClusterServer(
+          // TODO: refactor params of createDefaultPowerSourceReplaceableBatteryClusterServer
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          powerSourceCluster.batPercentRemaining as number | undefined,
+          powerSourceCluster.batChargeLevel,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          powerSourceCluster.batVoltage as number | undefined,
+          powerSourceCluster.batReplacementDescription,
+          powerSourceCluster.batQuantity,
+          powerSourceCluster.batReplaceability,
+        );
+        this.log.debug(`Created Power Source Replaceable Battery Cluster for device ${deviceId} with attributes: ${debugStringify(powerSourceCluster)}`);
+      } else if (powerSourceCluster.batChargeState !== undefined || powerSourceCluster.batFunctionalWhileCharging !== undefined) {
+        device.createDefaultPowerSourceRechargeableBatteryClusterServer(
+          // TODO: refactor params of createDefaultPowerSourceRechargeableBatteryClusterServer
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          powerSourceCluster.batPercentRemaining as number | undefined,
+          powerSourceCluster.batChargeLevel,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          powerSourceCluster.batVoltage as number | undefined,
+          powerSourceCluster.batReplaceability,
+        );
+        this.log.debug(`Created Power Source Rechargeable Battery Cluster for device ${deviceId} with attributes: ${debugStringify(powerSourceCluster)}`);
+      } else if (powerSourceCluster.batChargeLevel !== undefined || powerSourceCluster.batReplacementNeeded !== undefined || powerSourceCluster.batReplaceability !== undefined) {
+        device.createDefaultPowerSourceBatteryClusterServer(
+          powerSourceCluster.batPercentRemaining,
+          powerSourceCluster.batChargeLevel,
+          powerSourceCluster.batVoltage,
+          powerSourceCluster.batReplaceability,
+        );
+        this.log.debug(`Created Power Source Battery Cluster for device ${deviceId} with attributes: ${debugStringify(powerSourceCluster)}`);
+      } else if (powerSourceCluster.wiredCurrentType !== undefined) {
+        device.createDefaultPowerSourceWiredClusterServer(powerSourceCluster.wiredCurrentType);
+        this.log.debug(`Created Power Source Wired Cluster for device ${deviceId} with attributes: ${debugStringify(powerSourceCluster)}`);
+      }
+    }
+    if (jsonPayload.deviceTypes.includes('Soil Sensor')) {
+      // TODO: add to addRequiredClusterServers
+      device.behaviors.require(SoilMeasurementServer, {
+        soilMoistureMeasurementLimits: {
+          measurementType: MeasurementType.SoilMoisture,
+          measured: true,
+          minMeasuredValue: 0,
+          maxMeasuredValue: 100,
+          accuracyRanges: [{ rangeMin: 0, rangeMax: 100, fixedMax: 1 }],
+        },
+        soilMoistureMeasuredValue: 50,
+      });
+    }
+    device.addRequiredClusters();
     fireAndForget(this.registerDevice(device), this.log, `Failed to register device ${deviceId}`);
   }
 
@@ -335,12 +382,12 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
   async updateHandler(topic: string, payload: string): Promise<void> {
     const { deviceId, subTopic, endpointName } = this.mqttTopicParser(topic) ?? {};
     if (!deviceId || !subTopic || !endpointName) {
-      this.log.warn(`Skipping MQTT message with topic '${topic}' during onConfigure because it does not match expected format.`);
+      this.log.warn(`Skipping MQTT message with topic '${topic}' during updateHandler because it does not match expected format.`);
       return;
     }
     const device = this.getDeviceById(deviceId);
     if (!device) {
-      this.log.warn(`Skipping MQTT message with topic '${topic}' during onConfigure because device with ID '${deviceId}' is not registered.`);
+      this.log.warn(`Skipping MQTT message with topic '${topic}' during updateHandler because device with ID '${deviceId}' is not registered.`);
       return;
     }
     // TODO: add support for composed device types in the future if there is demand for it
@@ -353,7 +400,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
           device.log.warn(`Device '${deviceId}' does not have cluster '${cluster}' defined. Skipping cluster configuration for this cluster.`);
           continue;
         }
-        await device.setCluster(cluster, parsedPayload[cluster]);
+        await device.setCluster(cluster, parsedPayload[cluster], device.log);
       }
     }
   }

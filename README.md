@@ -39,7 +39,53 @@ The **matterbridge-mqtt** plugin bridges any MQTT-capable device into the Matter
 
 # How it works
 
-Topic: matterbridge
+## Configuration
+
+The plugin is configured through the Matterbridge frontend. The settings are stored in `~/.matterbridge/matterbridge-mqtt.config.json`.
+
+| Parameter            | Default            | Description                                                                                                        |
+| -------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `host`               | `mqtt://localhost` | Broker URL. Use `mqtt://` for plain TCP, `mqtts://` for TLS, `ws://` for WebSocket, `wss://` for secure WebSocket. |
+| `port`               | `1883`             | Broker port. Common values: `1883` (plain), `8883` (TLS), `9001` (WebSocket).                                      |
+| `protocolVersion`    | `5`                | MQTT protocol version: `3`, `4` (MQTT 3.1.1), or `5`.                                                              |
+| `clientId`           | _(auto)_           | Client identifier sent to the broker. Leave empty to let the library generate one.                                 |
+| `username`           | _(empty)_          | Username for broker authentication. Leave empty if the broker does not require credentials.                        |
+| `password`           | _(empty)_          | Password for broker authentication.                                                                                |
+| `ca`                 | _(empty)_          | Path to the CA certificate file for TLS broker verification.                                                       |
+| `cert`               | _(empty)_          | Path to the client certificate file for mutual TLS authentication.                                                 |
+| `key`                | _(empty)_          | Path to the client private key file for mutual TLS authentication.                                                 |
+| `rejectUnauthorized` | `true`             | Reject brokers with self-signed or untrusted TLS certificates. Set to `false` for self-signed brokers.             |
+| `topic`              | `matterbridge`     | Base topic prefix used for all device topics.                                                                      |
+
+### Minimal configuration example
+
+```json
+{
+  "host": "mqtt://192.168.1.10",
+  "port": 1883,
+  "protocolVersion": 5,
+  "topic": "matterbridge"
+}
+```
+
+### TLS configuration example
+
+```json
+{
+  "host": "mqtts://broker.example.com",
+  "port": 8883,
+  "protocolVersion": 5,
+  "ca": "/path/to/ca.crt",
+  "cert": "/path/to/client.crt",
+  "key": "/path/to/client.key",
+  "rejectUnauthorized": true,
+  "topic": "matterbridge"
+}
+```
+
+### Topic structure
+
+All topics follow the pattern `<topic>/<deviceId>/<subTopic>/root`, where `<topic>` is the configured base topic (default: `matterbridge`) and `<deviceId>` is a stable identifier you choose for each device.
 
 ## Publish
 
@@ -54,7 +100,7 @@ only the fixed and optional attributes shall be published here
 ```typescript
 const config = {
   deviceTypes: ['Dimmable Light'],
-  clusters: { BridgedDeviceBasicInformation: { NodeLabel: 'Light 1', SerialNumber: 'xxx-yyy-xxx' }, LevelControl: { onLevel: 128 } },
+  clusters: { BridgedDeviceBasicInformation: { nodeLabel: 'Light 1', serialNumber: 'xxx-yyy-xxx' }, LevelControl: { onLevel: 128 } },
 };
 publish('matterbridge/light1/config/root', JSON.stringify(config));
 ```
@@ -89,6 +135,7 @@ Payload: "{"cluster":"OnOff","command":"on","request": MatterRequest | undefined
 
 # Todo
 
+- [ ] Add white and black list
 - [ ] Command handler
 - [ ] Attributes handler in config
 - [ ] Add Chapter 8. Entry Control Device Types

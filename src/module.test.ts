@@ -134,7 +134,7 @@ describe('MqttPlatform', () => {
       JSON.stringify({
         deviceTypes: ['OnOffLight'],
         clusters: {
-          BridgedDeviceBasicInformation: { NodeLabel: 'Light 1' },
+          BridgedDeviceBasicInformation: { nodeLabel: 'Light 1' },
           LevelControl: { onLevel: 128 },
         },
       }),
@@ -244,15 +244,15 @@ describe('MqttPlatform', () => {
         deviceTypes: ['OnOffLight'],
         clusters: {
           BridgedDeviceBasicInformation: {
-            NodeLabel: 'My Light',
-            SerialNumber: 'SN-001',
-            VendorId: 0xfff1,
-            VendorName: 'Acme',
-            ProductName: 'Smart Light',
-            SoftwareVersion: 1,
-            SoftwareVersionString: '1.0.0',
-            HardwareVersion: 1,
-            HardwareVersionString: '1.0',
+            nodeLabel: 'My Light',
+            serialNumber: 'SN-001',
+            vendorId: 0xfff1,
+            vendorName: 'Acme',
+            productName: 'Smart Light',
+            softwareVersion: 1,
+            softwareVersionString: '1.0.0',
+            hardwareVersion: 1,
+            hardwareVersionString: '1.0',
           },
         },
       });
@@ -292,6 +292,46 @@ describe('MqttPlatform', () => {
         clusters: {},
       });
       expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Creating device with ID all-types/));
+    });
+
+    it('should create a Power Source device with replaceable battery cluster', () => {
+      platform.createrDevice('ps-replaceable', 'root', {
+        deviceTypes: ['Power Source'],
+        clusters: { PowerSource: { batReplacementDescription: 'AAA', batQuantity: 3, batPercentRemaining: 200, batChargeLevel: 0 } },
+      });
+      expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Created Power Source Replaceable Battery Cluster/));
+    });
+
+    it('should create a Power Source device with rechargeable battery cluster', () => {
+      platform.createrDevice('ps-rechargeable', 'root', {
+        deviceTypes: ['Power Source'],
+        clusters: { PowerSource: { batChargeState: 0, batFunctionalWhileCharging: true } },
+      });
+      expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Created Power Source Rechargeable Battery Cluster/));
+    });
+
+    it('should create a Power Source device with battery cluster', () => {
+      platform.createrDevice('ps-battery', 'root', {
+        deviceTypes: ['Power Source'],
+        clusters: { PowerSource: { batChargeLevel: 0 } },
+      });
+      expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Created Power Source Battery Cluster/));
+    });
+
+    it('should create a Power Source device with wired cluster', () => {
+      platform.createrDevice('ps-wired', 'root', {
+        deviceTypes: ['Power Source'],
+        clusters: { PowerSource: { wiredCurrentType: 0 } },
+      });
+      expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Created Power Source Wired Cluster/));
+    });
+
+    it('should create a Soil Sensor device', () => {
+      platform.createrDevice('soil1', 'root', {
+        deviceTypes: ['Soil Sensor'],
+        clusters: {},
+      });
+      expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Creating device with ID soil1/));
     });
   });
 
@@ -358,7 +398,7 @@ describe('MqttPlatform', () => {
       await platform.onConfigure();
       expect(mockDebug).toHaveBeenCalledWith(expect.stringMatching(/Setting cluster 'OnOff'/));
       expect(mockDevice.hasClusterServer).toHaveBeenCalledWith('OnOff');
-      expect(mockSetCluster).toHaveBeenCalledWith('OnOff', { onOff: false });
+      expect(mockSetCluster).toHaveBeenCalledWith('OnOff', { onOff: false }, expect.anything());
       getDeviceByIdSpy.mockRestore();
     });
 
@@ -376,7 +416,7 @@ describe('MqttPlatform', () => {
       platform.state.set(`${config.topic}/light1/state/root`, JSON.stringify({ OnOff: { onOff: true }, UnknownCluster: { attr: 1 } }));
       await platform.onConfigure();
       expect(mockSetCluster).toHaveBeenCalledTimes(1);
-      expect(mockSetCluster).toHaveBeenCalledWith('OnOff', { onOff: true });
+      expect(mockSetCluster).toHaveBeenCalledWith('OnOff', { onOff: true }, expect.anything());
       expect(mockWarn).toHaveBeenCalledWith(expect.stringMatching(/does not have cluster/));
       getDeviceByIdSpy.mockRestore();
     });
