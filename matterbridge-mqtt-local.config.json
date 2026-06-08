@@ -1,0 +1,20 @@
+{
+  "name": "matterbridge-mqtt",
+  "type": "DynamicPlatform",
+  "version": "1.0.0",
+  "host": "mqtt://localhost",
+  "port": 1883,
+  "protocolVersion": 5,
+  "username": "",
+  "password": "",
+  "clientId": "",
+  "ca": "",
+  "rejectUnauthorized": true,
+  "cert": "",
+  "key": "",
+  "topic": "matterbridge",
+  "whiteList": [],
+  "blackList": [],
+  "debug": false,
+  "unregisterOnShutdown": false
+}
