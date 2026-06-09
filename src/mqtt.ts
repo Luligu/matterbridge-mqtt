@@ -27,7 +27,7 @@ import { readFileSync } from 'node:fs';
 
 import { AnsiLogger, debugStringify, LogLevel, sc, TimestampFormat, error, debug, warn, info } from 'matterbridge/logger';
 import { inspectError } from 'matterbridge/utils';
-import { connectAsync, type IClientOptions, type IClientPublishOptions, type MqttClient } from 'mqtt';
+import { connectAsync, type IClientOptions, type IClientPublishOptions, type IClientSubscribeOptions, type IPublishPacket, type MqttClient } from 'mqtt';
 
 import type { MqttPlatformConfig } from './module.js';
 
@@ -47,8 +47,10 @@ export interface MqttService {
   on(event: 'connect' | 'close' | 'reconnect', listener: () => void): this;
   /** Emitted when the client encounters a protocol or transport error. */
   on(event: 'error', listener: (error: Error) => void): this;
-  /** Emitted for each MQTT message received on a subscribed topic, or after a successful publish. */
-  on(event: 'message' | 'published', listener: (topic: string, payload: string) => void): this;
+  /** Emitted for each MQTT message received on a subscribed topic. */
+  on(event: 'message', listener: (topic: string, payload: string, packet: IPublishPacket) => void): this;
+  /** Emitted after a successful publish. */
+  on(event: 'published', listener: (topic: string, payload: string) => void): this;
   /** Emitted after a topic has been successfully subscribed. */
   on(event: 'subscribed', listener: (topic: string) => void): this;
 
@@ -57,7 +59,9 @@ export interface MqttService {
   /** @internal */
   emit(event: 'error', error: Error): boolean;
   /** @internal */
-  emit(event: 'message' | 'published', topic: string, payload: string): boolean;
+  emit(event: 'message', topic: string, payload: string, packet: IPublishPacket): boolean;
+  /** @internal */
+  emit(event: 'published', topic: string, payload: string): boolean;
   /** @internal */
   emit(event: 'subscribed', topic: string): boolean;
 }
@@ -192,9 +196,9 @@ export class MqttService extends EventEmitter {
       this.emit('error', err);
     });
 
-    client.on('message', (topic, payload) => {
-      this.log.debug(`MqttService: message on ${debug.bold.success`${topic}`}: "${payload.toString().replaceAll('\n', '')}"`);
-      this.emit('message', topic, payload.toString());
+    client.on('message', (topic, payload, packet) => {
+      this.log.debug(`MqttService: ${packet.retain ? 'retained ' : ''}message on ${debug.bold.success`${topic}`}: "${payload.toString().replaceAll('\n', '')}"`);
+      this.emit('message', topic, payload.toString(), packet);
     });
     return true;
   }
@@ -238,8 +242,9 @@ export class MqttService extends EventEmitter {
     }
 
     try {
-      await this.client.subscribeAsync(topic);
-      this.log.debug(`MqttService: subscribed to '${debug.bold.success`${topic}`}'`);
+      const options: IClientSubscribeOptions = this.config.protocolVersion === 5 ? { qos: 2, rh: 0 } : { qos: 2 };
+      await this.client.subscribeAsync(topic, options);
+      this.log.debug(`MqttService: subscribed to '${debug.bold.success`${topic}`}' with options: ${debugStringify(options)}`);
       this.emit('subscribed', topic);
       return true;
     } catch (err) {

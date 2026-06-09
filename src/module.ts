@@ -23,44 +23,21 @@
  */
 
 import {
-  airQualitySensor,
   bridgedNode,
-  colorTemperatureLight,
-  contactSensor,
   type DeviceTypeDefinition,
-  dimmableLight,
-  dimmableMountedSwitch,
-  dimmableOutlet,
-  electricalSensor,
-  extendedColorLight,
-  flowSensor,
-  humiditySensor,
-  lightSensor,
+  getBehaviourTypeFromClusterServerId,
+  getSupportedCluster,
+  getSupportedDeviceType,
   MatterbridgeDynamicPlatform,
   MatterbridgeEndpoint,
-  occupancySensor,
-  onOffLight,
-  onOffMountedSwitch,
-  onOffOutlet,
   type PlatformConfig,
   type PlatformMatterbridge,
-  powerSource,
-  pressureSensor,
-  pumpDevice,
-  rainSensor,
-  smokeCoAlarm,
-  soilSensor,
-  temperatureSensor,
-  waterFreezeDetector,
-  waterLeakDetector,
-  waterValve,
 } from 'matterbridge';
 import { type AnsiLogger, debugStringify, info, warn } from 'matterbridge/logger';
 import type { AtLeastOne } from 'matterbridge/matter';
-import { SoilMeasurementServer } from 'matterbridge/matter/behaviors';
 import type { BridgedDeviceBasicInformation, PowerSource } from 'matterbridge/matter/clusters';
-import { MeasurementType } from 'matterbridge/matter/types';
 import { fireAndForget, inspectError } from 'matterbridge/utils';
+import type { IPublishPacket } from 'mqtt';
 
 import { MqttService } from './mqtt.js';
 
@@ -129,7 +106,9 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
   override async onStart(reason?: string): Promise<void> {
     this.log.info(`onStart called with reason: ${reason}`);
 
+    // Clear the select since we will be re-populating it based on the MQTT messages we receive, and we want to avoid any stale entries from previous runs
     await this.ready;
+    await this.clearSelect();
 
     this.mqtt.on('connect', () => {
       this.log.info('MQTT connected');
@@ -156,8 +135,8 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       this.log.error(`MQTT error: ${error.message}`);
     });
 
-    this.mqtt.on('message', (topic, payload) => {
-      this.mqttMessageHandler(topic, payload);
+    this.mqtt.on('message', (topic, payload, packet) => {
+      this.mqttMessageHandler(topic, payload, packet);
     });
 
     await this.mqtt.connect();
@@ -205,32 +184,55 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
   /**
    * Handles an incoming MQTT message by dispatching it based on its subTopic.
    *
-   * Dispatches `config` messages to {@link createrDevice} and logs `state` messages.
+   * Dispatches `config` messages to {@link createDevice} and logs `state` messages.
    * Warns on unrecognized subTopics and on topics that do not match the expected format.
    *
    * @param {string} topic - The MQTT topic on which the message was received.
    * @param {string} payload - The raw JSON string payload of the message.
+   * @param {IPublishPacket} packet - The original MQTT publish packet metadata.
    */
-  mqttMessageHandler(topic: string, payload: string): void {
+  mqttMessageHandler(topic: string, payload: string, packet: IPublishPacket): void {
     try {
-      const message = JSON.parse(payload);
-      this.log.debug(`MQTT message on '${topic}': ${debugStringify(message)}`);
       const parsed = this.mqttTopicParser(topic);
       if (!parsed) {
         this.log.warn(`Received MQTT message on topic '${topic}' that does not match expected format. Ignoring.`);
         return;
       }
       const { deviceId, subTopic, endpointName } = parsed;
+      if (subTopic === 'config' && payload === '') {
+        this.log.debug(`MQTT ${packet.retain ? 'retained ' : ''}message on '${topic}': empty payload`);
+        this.log.info(`Received empty payload on config topic '${topic}', treating as device deletion request.`);
+        this.destroyDevice(deviceId);
+        return;
+      }
+      if (subTopic === 'state' && payload === '') {
+        this.log.debug(`MQTT ${packet.retain ? 'retained ' : ''}message on '${topic}': empty payload`);
+        return;
+      }
+      const message = JSON.parse(payload);
+      this.log.debug(`MQTT ${packet.retain ? 'retained ' : ''}message on '${topic}': ${debugStringify(message)}`);
       if (subTopic === 'config') {
         this.log.info(
           `Received ${info.bgMagenta.black.bold` config `} message for device ${info.bgCyan.black.bold` ${deviceId} `} endpoint ${info.bgGreen.black.bold` ${endpointName} `}`,
         );
-        this.createrDevice(deviceId, endpointName, message);
+        if (typeof message.deviceTypes !== 'object' && !Array.isArray(message.deviceTypes)) {
+          this.log.warn(`Received MQTT message on topic '${topic}' with invalid format: 'deviceTypes' field is missing or not an array. Ignoring.`);
+          return;
+        }
+        if (typeof message.clusters !== 'object' || Array.isArray(message.clusters)) {
+          this.log.warn(`Received MQTT message on topic '${topic}' with invalid format: 'clusters' field is missing or not an object. Ignoring.`);
+          return;
+        }
+        this.createDevice(deviceId, endpointName, message);
       } else if (subTopic === 'state') {
         this.log.info(
           `Received ${info.bgMagenta.black.bold` state `} message for device ${info.bgCyan.black.bold` ${deviceId} `} endpoint ${info.bgGreen.black.bold` ${endpointName} `}`,
         );
         this.state.set(topic, payload);
+        if (typeof message !== 'object' || Array.isArray(message)) {
+          this.log.warn(`Received MQTT message on topic '${topic}' with invalid format: state is missing or not an object. Ignoring.`);
+          return;
+        }
         // istanbul ignore else
         if (this.isConfigured) fireAndForget(this.updateHandler(topic, payload), this.log, `Failed to handle state update for device ${deviceId} on endpoint ${endpointName}`);
       } else {
@@ -252,63 +254,36 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
    * @param {string} endpointName - Name of the endpoint within the device (e.g. `root`).
    * @param {{ deviceTypes: string[]; clusters: { [key: string]: { [key: string]: unknown } } }} jsonPayload - Parsed config payload containing `deviceTypes` and `clusters` maps.
    */
-  createrDevice(deviceId: string, endpointName: string, jsonPayload: { deviceTypes: string[]; clusters: { [key: string]: { [key: string]: unknown } } }): void {
+  createDevice(deviceId: string, endpointName: string, jsonPayload: { deviceTypes: string[]; clusters: { [key: string]: { [key: string]: unknown } } }): void {
     this.log.debug(`Creating device with ID ${deviceId} and endpoint ${endpointName} based on config: ${debugStringify(jsonPayload)}`);
     const deviceTypes: DeviceTypeDefinition[] = [];
+    const bridgedDeviceBasicInformationCluster: Partial<BridgedDeviceBasicInformation.Attributes> = jsonPayload.clusters.BridgedDeviceBasicInformation || {};
+    const deviceName = bridgedDeviceBasicInformationCluster.nodeLabel ?? deviceId;
+    const serialNumber = bridgedDeviceBasicInformationCluster.serialNumber ?? deviceId;
 
-    // TODO: add support for composed device types in the future if there is demand for it
-    const supportedDeviceTypes: { name: string; deviceType: DeviceTypeDefinition }[] = [
-      // Chapter 2. Utility Device Types
-      { name: 'Power Source', deviceType: powerSource },
-      { name: 'Electrical Sensor', deviceType: electricalSensor },
-      /** Chapter 4. Lighting Device Types */
-      { name: 'OnOff Light', deviceType: onOffLight },
-      { name: 'Dimmable Light', deviceType: dimmableLight },
-      { name: 'Color Temperature Light', deviceType: colorTemperatureLight },
-      { name: 'Extended Color Light', deviceType: extendedColorLight },
-      /** Chapter 5. Smart Plugs/Outlets and other Actuators Device Types */
-      { name: 'OnOff Plugin Unit', deviceType: onOffOutlet },
-      { name: 'Dimmable PlugIn Unit', deviceType: dimmableOutlet },
-      { name: 'Mounted OnOff Control', deviceType: onOffMountedSwitch },
-      { name: 'Mounted Dimmable Load Control', deviceType: dimmableMountedSwitch },
-      { name: 'Pump', deviceType: pumpDevice },
-      { name: 'Water Valve', deviceType: waterValve },
-      // { name: 'Irrigation System', deviceType: irrigationSystem }, // Is a composed device type
-      /** Chapter 7. Sensor Device Types */
-      { name: 'Contact Sensor', deviceType: contactSensor },
-      { name: 'Light Sensor', deviceType: lightSensor },
-      { name: 'Occupancy Sensor', deviceType: occupancySensor },
-      { name: 'Temperature Sensor', deviceType: temperatureSensor },
-      { name: 'Pressure Sensor', deviceType: pressureSensor },
-      { name: 'Flow Sensor', deviceType: flowSensor },
-      { name: 'Humidity Sensor', deviceType: humiditySensor },
-      { name: 'Smoke CO Alarm', deviceType: smokeCoAlarm },
-      { name: 'Air Quality Sensor', deviceType: airQualitySensor },
-      { name: 'Water Freeze Detector', deviceType: waterFreezeDetector },
-      { name: 'Water Leak Detector', deviceType: waterLeakDetector },
-      { name: 'Rain Sensor', deviceType: rainSensor },
-      { name: 'Soil Sensor', deviceType: soilSensor },
-    ];
+    /** Validate against the select */
+    this.setSelectDevice(serialNumber, deviceName);
+    if (!this.validateDevice([serialNumber, deviceName])) return;
 
-    for (const name of jsonPayload.deviceTypes) {
-      const found = supportedDeviceTypes.find((dt) => dt.name === name);
+    for (const name of jsonPayload.deviceTypes.filter((dt) => dt !== 'BridgedNode')) {
+      const found = getSupportedDeviceType(name);
       if (found) {
-        deviceTypes.push(found.deviceType);
+        deviceTypes.push(found);
       } else {
         this.log.warn(`Device type '${name}' is not supported. Skipping.`);
       }
     }
-    deviceTypes.push(bridgedNode); // All devices must include the Bridged Node device type as per spec since we are creating bridged devices
-    const bridgedDeviceBasicInformationCluster: Partial<BridgedDeviceBasicInformation.Attributes> = jsonPayload.clusters.BridgedDeviceBasicInformation || {};
-    const powerSourceCluster: Partial<PowerSource.Attributes> = jsonPayload.clusters.PowerSource || {};
+    /** All devices must include the Bridged Node device type as per spec since we are creating bridged devices, and we add as last */
+    deviceTypes.push(bridgedNode);
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const device = new MatterbridgeEndpoint(deviceTypes as AtLeastOne<DeviceTypeDefinition>, {
       id: deviceId,
     });
+
     /** Bridged Device Basic Information Cluster */
     device.createDefaultBridgedDeviceBasicInformationClusterServer(
-      bridgedDeviceBasicInformationCluster.nodeLabel ?? deviceId,
-      bridgedDeviceBasicInformationCluster.serialNumber ?? deviceId,
+      deviceName,
+      serialNumber,
       bridgedDeviceBasicInformationCluster.vendorId,
       bridgedDeviceBasicInformationCluster.vendorName,
       bridgedDeviceBasicInformationCluster.productName,
@@ -317,16 +292,16 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       bridgedDeviceBasicInformationCluster.hardwareVersion,
       bridgedDeviceBasicInformationCluster.hardwareVersionString,
     );
+    this.log.debug(`Created Bridged Device Basic Information Cluster for device ${deviceId} with attributes: ${debugStringify(bridgedDeviceBasicInformationCluster)}`);
+
     /** Power Source Cluster */
-    if (jsonPayload.deviceTypes.includes('Power Source')) {
+    if (jsonPayload.deviceTypes.includes('PowerSource')) {
+      const powerSourceCluster: Partial<PowerSource.Attributes> = jsonPayload.clusters.PowerSource || {};
       if (powerSourceCluster.batReplacementDescription !== undefined || powerSourceCluster.batQuantity !== undefined) {
         device.createDefaultPowerSourceReplaceableBatteryClusterServer(
-          // TODO: refactor params of createDefaultPowerSourceReplaceableBatteryClusterServer
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-          powerSourceCluster.batPercentRemaining as number | undefined,
+          powerSourceCluster.batPercentRemaining,
           powerSourceCluster.batChargeLevel,
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-          powerSourceCluster.batVoltage as number | undefined,
+          powerSourceCluster.batVoltage,
           powerSourceCluster.batReplacementDescription,
           powerSourceCluster.batQuantity,
           powerSourceCluster.batReplaceability,
@@ -334,12 +309,9 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         this.log.debug(`Created Power Source Replaceable Battery Cluster for device ${deviceId} with attributes: ${debugStringify(powerSourceCluster)}`);
       } else if (powerSourceCluster.batChargeState !== undefined || powerSourceCluster.batFunctionalWhileCharging !== undefined) {
         device.createDefaultPowerSourceRechargeableBatteryClusterServer(
-          // TODO: refactor params of createDefaultPowerSourceRechargeableBatteryClusterServer
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-          powerSourceCluster.batPercentRemaining as number | undefined,
+          powerSourceCluster.batPercentRemaining,
           powerSourceCluster.batChargeLevel,
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-          powerSourceCluster.batVoltage as number | undefined,
+          powerSourceCluster.batVoltage,
           powerSourceCluster.batReplaceability,
         );
         this.log.debug(`Created Power Source Rechargeable Battery Cluster for device ${deviceId} with attributes: ${debugStringify(powerSourceCluster)}`);
@@ -356,21 +328,43 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         this.log.debug(`Created Power Source Wired Cluster for device ${deviceId} with attributes: ${debugStringify(powerSourceCluster)}`);
       }
     }
-    if (jsonPayload.deviceTypes.includes('Soil Sensor')) {
-      // TODO: add to addRequiredClusterServers
-      device.behaviors.require(SoilMeasurementServer, {
-        soilMoistureMeasurementLimits: {
-          measurementType: MeasurementType.SoilMoisture,
-          measured: true,
-          minMeasuredValue: 0,
-          maxMeasuredValue: 100,
-          accuracyRanges: [{ rangeMin: 0, rangeMax: 100, fixedMax: 1 }],
-        },
-        soilMoistureMeasuredValue: 50,
-      });
+
+    /**
+     * Add behaviors for all other clusters based on cluster name, excluding the ones we already handled above since they have custom handling
+     * and are not guaranteed to be included in the config
+     */
+    for (const cluster of Object.keys(jsonPayload.clusters).filter((c) => c !== 'BridgedDeviceBasicInformation' && c !== 'PowerSource')) {
+      const found = getSupportedCluster(cluster);
+      if (!found?.id) {
+        this.log.warn(`Cluster '${cluster}' is not supported. Skipping.`);
+        continue;
+      }
+      const behavior = getBehaviourTypeFromClusterServerId(found.id);
+      /* istanbul ignore if -- current Matterbridge registry exposes a behavior for every supported cluster. */
+      if (!behavior) {
+        this.log.warn(`Cluster '${cluster}' does not have a defined behavior. Skipping.`);
+        continue;
+      }
+      this.log.debug(`*Adding behavior '${behavior.name}' to device '${deviceId}' for cluster '${cluster}' with configuration: ${debugStringify(jsonPayload.clusters[cluster])}`);
+      device.behaviors.require(behavior, jsonPayload.clusters[cluster]);
     }
+
     device.addRequiredClusters();
+    /**
+     * This will run in the background and we don't want to await it here since we want to be able to process multiple MQTT messages in quick succession without waiting
+     * for each device registration to complete, and any errors will be caught and logged by the fireAndForget utility
+     */
     fireAndForget(this.registerDevice(device), this.log, `Failed to register device ${deviceId}`);
+  }
+
+  destroyDevice(deviceId: string): void {
+    this.log.info(`Destroying device with ID '${deviceId}'`);
+    const device = this.getDeviceById(deviceId);
+    if (!device) {
+      this.log.warn(`Cannot destroy device with ID '${deviceId}' because it is not registered.`);
+      return;
+    }
+    fireAndForget(this.unregisterDevice(device), this.log, `Failed to unregister device ${deviceId}`);
   }
 
   /**

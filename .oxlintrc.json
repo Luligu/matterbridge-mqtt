@@ -1,4 +1,4 @@
-// .oxlintrc.json 1.0.4
+// .oxlintrc.json 1.0.6
 
 // This Oxlint configuration is designed for a TypeScript project using ESM modules.
 {
@@ -67,6 +67,7 @@
     "eslint/no-undefined": "off",
     "eslint/no-void": "off",
     "eslint/no-use-before-define": ["error", { "classes": false }],
+    "eslint/complexity": ["warn", { "max": 30 }],
     "unicorn/prefer-node-protocol": "error",
     "unicorn/require-post-message-target-origin": "off",
     "unicorn/prefer-add-event-listener": "off",
@@ -100,6 +101,7 @@
     "typescript/prefer-nullish-coalescing": "warn",
     "typescript/prefer-optional-chain": "warn",
     "typescript/explicit-member-accessibility": "off",
+    "typescript/no-deprecated": "warn",
     "jsdoc/check-tag-names": ["error", { "definedTags": ["created", "contributor", "remarks"] }],
     "jsdoc/require-param": "error",
     "jsdoc/require-param-type": "error",

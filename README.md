@@ -89,7 +89,9 @@ All topics follow the pattern `<topic>/<deviceId>/<subTopic>/root`, where `<topi
 
 ## Publish
 
-Each device shall publish with retain:
+Each device shall publish retained `config` messages and retained `state` messages:
+
+Device types, clusters and attributes all use their Matter names without spaces: device types (e.g. `PowerSource`, `DimmableLight`), clusters (e.g. `PowerSource`, `OnOff`, `LevelControl`) and attributes (e.g. `onOff`, `currentLevel`).
 
 ### config
 
@@ -99,10 +101,10 @@ only the fixed and optional attributes shall be published here
 
 ```typescript
 const config = {
-  deviceTypes: ['Dimmable Light'],
+  deviceTypes: ['DimmableLight'],
   clusters: { BridgedDeviceBasicInformation: { nodeLabel: 'Light 1', serialNumber: 'xxx-yyy-xxx' }, LevelControl: { onLevel: 128 } },
 };
-publish('matterbridge/light1/config/root', JSON.stringify(config));
+publish('matterbridge/light1/config/root', JSON.stringify(config), { retain: true, qos: 2 });
 ```
 
 ### state
@@ -113,7 +115,7 @@ only the current attributes shall be published here
 
 ```typescript
 const state = { OnOff: { onOff: false }, LevelControl: { currentLevel: 254 } };
-publish('matterbridge/deviceid/state/root', JSON.stringify(state));
+publish('matterbridge/deviceid/state/root', JSON.stringify(state), { retain: true, qos: 2 });
 ```
 
 ## Subscribe
@@ -135,9 +137,8 @@ Payload: "{"cluster":"OnOff","command":"on","request": MatterRequest | undefined
 
 # Todo
 
-- [ ] Add white and black list
-- [ ] Command handler
-- [ ] Attributes handler in config
-- [ ] Add Chapter 8. Entry Control Device Types
-- [ ] Add Chapter 9. HVAC Device Types
+- [x] Add white and black list
+- [x] Attributes handler in config
+- [ ] Matter command handler
+- [ ] Matter Subscribe handler
 - [ ] Add composed device types

@@ -8,11 +8,27 @@ If you like this project and find it useful, please consider giving it a star on
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
-## [0.0.5] - Dev branch
+## [0.0.5] - 2026-06-09
+
+### Added
+
+- Add handler to create all device types.
+- Add MQTT packet metadata forwarding to message handlers.
+- Add retained MQTT message logging.
+- Add explicit MQTT 5 retained message replay on subscribe.
+- Add `destroyDevice()` support when a config topic receives an empty payload.
+- Add handling for empty state payloads without JSON parse errors.
+- Add validation against white/black list selections when creating devices.
+- Add tests for `mqttMessageHandler()`, `createDevice()`, `destroyDevice()`, and `updateHandler()`.
 
 ### Changed
 
+- Publish test config and state messages with QoS 2 and retain enabled.
+- Subscribe to MQTT topics with QoS 2.
 - Bump `@typescript/native-preview` to v.7.0.0-dev.20260608.1.
+- Bump `@typescript/native-preview` to v.7.0.0-dev.20260609.1.
+- Bump `oxlint` to v.1.69.0.
+- Bump `oxfmt` to v.0.54.0.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
