@@ -215,11 +215,15 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         this.log.info(
           `Received ${info.bgMagenta.black.bold` config `} message for device ${info.bgCyan.black.bold` ${deviceId} `} endpoint ${info.bgGreen.black.bold` ${endpointName} `}`,
         );
-        if (typeof message.deviceTypes !== 'object' && !Array.isArray(message.deviceTypes)) {
+        if (typeof message !== 'object' || message === null || Array.isArray(message)) {
+          this.log.warn(`Received MQTT message on topic '${topic}' with invalid format: config is missing or not an object. Ignoring.`);
+          return;
+        }
+        if (!Array.isArray(message.deviceTypes)) {
           this.log.warn(`Received MQTT message on topic '${topic}' with invalid format: 'deviceTypes' field is missing or not an array. Ignoring.`);
           return;
         }
-        if (typeof message.clusters !== 'object' || Array.isArray(message.clusters)) {
+        if (typeof message.clusters !== 'object' || message.clusters === null || Array.isArray(message.clusters)) {
           this.log.warn(`Received MQTT message on topic '${topic}' with invalid format: 'clusters' field is missing or not an object. Ignoring.`);
           return;
         }
@@ -229,7 +233,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
           `Received ${info.bgMagenta.black.bold` state `} message for device ${info.bgCyan.black.bold` ${deviceId} `} endpoint ${info.bgGreen.black.bold` ${endpointName} `}`,
         );
         this.state.set(topic, payload);
-        if (typeof message !== 'object' || Array.isArray(message)) {
+        if (typeof message !== 'object' || message === null || Array.isArray(message)) {
           this.log.warn(`Received MQTT message on topic '${topic}' with invalid format: state is missing or not an object. Ignoring.`);
           return;
         }

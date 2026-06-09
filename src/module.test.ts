@@ -282,9 +282,33 @@ describe('MqttPlatform', () => {
       expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/deviceTypes.*missing or not an array/));
     });
 
+    it('should log warn when config payload is not an object', () => {
+      const createDeviceSpy = jest.spyOn(platform, 'createDevice');
+      handleMqttMessage(platform, `${config.topic}/light1/config/root`, JSON.stringify(null));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/config is missing or not an object/));
+      expect(createDeviceSpy).not.toHaveBeenCalled();
+      createDeviceSpy.mockRestore();
+    });
+
+    it('should log warn when config deviceTypes is not an array', () => {
+      const createDeviceSpy = jest.spyOn(platform, 'createDevice');
+      handleMqttMessage(platform, `${config.topic}/light1/config/root`, JSON.stringify({ deviceTypes: { OnOffLight: true }, clusters: {} }));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/deviceTypes.*missing or not an array/));
+      expect(createDeviceSpy).not.toHaveBeenCalled();
+      createDeviceSpy.mockRestore();
+    });
+
     it('should log warn when config clusters is missing', () => {
       handleMqttMessage(platform, `${config.topic}/light1/config/root`, JSON.stringify({ deviceTypes: ['OnOffLight'] }));
       expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/clusters.*missing or not an object/));
+    });
+
+    it('should log warn when config clusters is null', () => {
+      const createDeviceSpy = jest.spyOn(platform, 'createDevice');
+      handleMqttMessage(platform, `${config.topic}/light1/config/root`, JSON.stringify({ deviceTypes: ['OnOffLight'], clusters: null }));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/clusters.*missing or not an object/));
+      expect(createDeviceSpy).not.toHaveBeenCalled();
+      createDeviceSpy.mockRestore();
     });
 
     it('should log info for a state message', () => {
@@ -321,6 +345,11 @@ describe('MqttPlatform', () => {
 
     it('should log warn when state payload is not an object', () => {
       handleMqttMessage(platform, `${config.topic}/sensor1/state/root`, JSON.stringify([]));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/state is missing or not an object/));
+    });
+
+    it('should log warn when state payload is null', () => {
+      handleMqttMessage(platform, `${config.topic}/sensor1/state/root`, JSON.stringify(null));
       expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/state is missing or not an object/));
     });
 
