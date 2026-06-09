@@ -12,6 +12,7 @@ If you like this project and find it useful, please consider giving it a star on
 
 ### Added
 
+- Require Matterbridge 3.8.1.
 - Add handler to create all device types.
 - Add MQTT packet metadata forwarding to message handlers.
 - Add retained MQTT message logging.

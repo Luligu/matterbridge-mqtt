@@ -2,10 +2,10 @@ const NAME = 'MqttService';
 
 import { jest } from '@jest/globals';
 import { loggerDebugSpy, loggerErrorSpy, loggerWarnSpy, setupTest } from 'matterbridge/jestutils';
+import type { IPublishPacket } from 'mqtt';
 
 import type { MqttPlatformConfig } from './module.js';
 import type { MqttService as MqttServiceType } from './mqtt.js';
-import type { IPublishPacket } from 'mqtt';
 
 // --- Mock infrastructure (must be defined before jest.unstable_mockModule) ---
 
