@@ -232,11 +232,11 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         this.log.info(
           `Received ${info.bgMagenta.black.bold` state `} message for device ${info.bgCyan.black.bold` ${deviceId} `} endpoint ${info.bgGreen.black.bold` ${endpointName} `}`,
         );
-        this.state.set(topic, payload);
         if (typeof message !== 'object' || message === null || Array.isArray(message)) {
           this.log.warn(`Received MQTT message on topic '${topic}' with invalid format: state is missing or not an object. Ignoring.`);
           return;
         }
+        this.state.set(topic, payload);
         // istanbul ignore else
         if (this.isConfigured) fireAndForget(this.updateHandler(topic, payload), this.log, `Failed to handle state update for device ${deviceId} on endpoint ${endpointName}`);
       } else {
