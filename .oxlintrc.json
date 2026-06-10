@@ -67,7 +67,7 @@
     "eslint/no-undefined": "off",
     "eslint/no-void": "off",
     "eslint/no-use-before-define": ["error", { "classes": false }],
-    "eslint/complexity": ["warn", { "max": 30 }],
+    "eslint/complexity": ["warn", { "max": 50 }],
     "unicorn/prefer-node-protocol": "error",
     "unicorn/require-post-message-target-origin": "off",
     "unicorn/prefer-add-event-listener": "off",

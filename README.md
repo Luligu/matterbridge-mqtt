@@ -89,7 +89,7 @@ All topics follow the pattern `<topic>/<deviceId>/<subTopic>/root`, where `<topi
 
 ## Publish
 
-Each device shall publish retained `config` messages and retained `state` messages:
+Each device shall publish retained `config`, `state` and `subscribe` messages:
 
 Device types, clusters and attributes all use their Matter names without spaces: device types (e.g. `PowerSource`, `DimmableLight`), clusters (e.g. `PowerSource`, `OnOff`, `LevelControl`) and attributes (e.g. `onOff`, `currentLevel`).
 
@@ -118,27 +118,29 @@ const state = { OnOff: { onOff: false }, LevelControl: { currentLevel: 254 } };
 publish('matterbridge/deviceid/state/root', JSON.stringify(state), { retain: true, qos: 2 });
 ```
 
-## Subscribe
+### subscribe
 
-Each device shall subscribe:
+- **matterbridge/deviceid/subscribe/root**
 
-### command
-
-- **matterbridge/deviceid/command/root**
-
-It will receive all Matter commands.
+only the attributes changes that the device want to receive from the controller shall be published here
 
 ```typescript
-Topic: 'matterbridge/deviceid/command/root'
-Payload: "{"cluster":"OnOff","command":"on","request": MatterRequest | undefined }"
+const subscribe = { OnOff: ['onOff'], LevelControl: ['currentLevel'] };
+publish('matterbridge/deviceid/state/root', JSON.stringify(state), { retain: true, qos: 2 });
 ```
+
+## Subscribe
+
+Each device may subscribe `write` messages:
+
+```typescript
+subscribe('matterbridge/deviceid/write/root', { qos: 2 });
+```
+
+and will receive all attributes changes it subscribed to.
 
 ---
 
 # Todo
 
-- [x] Add white and black list
-- [x] Attributes handler in config
-- [ ] Matter command handler
-- [ ] Matter Subscribe handler
 - [ ] Add composed device types
