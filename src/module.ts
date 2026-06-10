@@ -217,6 +217,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       /** Create device */
       const message = JSON.parse(payload);
       this.log.debug(`MQTT ${packet.retain ? 'retained ' : ''}message on '${topic}': ${debugStringify(message)}`);
+      // istanbul ignore else cause is already checked above
       if (subTopic === 'config') {
         this.log.info(
           `Received ${info.bgMagenta.black.bold` config `} message for device ${info.bgCyan.black.bold` ${deviceId} `} endpoint ${info.bgGreen.black.bold` ${endpointName} `}`,
@@ -289,8 +290,6 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       } else if (subTopic === 'write') {
         // 'write' subTopic is used for attribute updates from the device to MQTT
         return;
-      } else {
-        this.log.warn(`Received MQTT message with unrecognized subTopic ${warn.magenta.bold`${subTopic}`} on topic ${warn.success.bold`${topic}`}. Ignoring.`);
       }
     } catch (error) {
       inspectError(this.log, `Failed to parse MQTT message on '${topic}' with payload ${payload.replaceAll('\n', '')}`, error);
