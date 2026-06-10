@@ -47,7 +47,7 @@ jobs:
           "ref=$ref" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Clone matterbridge repo branch ${{ steps.select_matterbridge_ref.outputs.ref }}
-        run: git clone --depth 1 --single-branch --no-tags -b ${{ steps.select_matterbridge_ref.outputs.ref }} https://github.com/Luligu/matterbridge.git ../matterbridge
+        run: git clone --depth 1 --single-branch --no-tags -b dev https://github.com/Luligu/matterbridge.git ../matterbridge
 
       - name: Install matterbridge dependencies
         working-directory: ../matterbridge

@@ -2,6 +2,7 @@ const NAME = 'MqttService';
 
 import { jest } from '@jest/globals';
 import { loggerDebugSpy, loggerErrorSpy, loggerWarnSpy, setupTest } from 'matterbridge/jestutils';
+import type { IPublishPacket } from 'mqtt';
 
 import type { MqttPlatformConfig } from './module.js';
 import type { MqttService as MqttServiceType } from './mqtt.js';
@@ -9,7 +10,7 @@ import type { MqttService as MqttServiceType } from './mqtt.js';
 // --- Mock infrastructure (must be defined before jest.unstable_mockModule) ---
 
 const mockEndAsync = jest.fn<() => Promise<void>>();
-const mockSubscribeAsync = jest.fn<() => Promise<unknown>>();
+const mockSubscribeAsync = jest.fn<(topic: string, opts?: Record<string, unknown>) => Promise<unknown>>();
 const mockPublishAsync = jest.fn<() => Promise<void>>();
 const mockOn = jest.fn<(event: string, handler: (...args: unknown[]) => void) => void>();
 
@@ -58,6 +59,18 @@ const baseConfig: MqttPlatformConfig = {
   debug: false,
   unregisterOnShutdown: false,
 };
+
+/**
+ * Creates a minimal MQTT publish packet for message event tests.
+ *
+ * @param {boolean} retain Whether the packet should be marked as retained.
+ * @param {string} topic The MQTT topic carried by the packet.
+ * @param {Buffer | string} payload The MQTT payload carried by the packet.
+ * @returns {IPublishPacket} A publish packet suitable for MqttService message event tests.
+ */
+function createPublishPacket(retain: boolean, topic = 'matterbridge/device1', payload: Buffer | string = Buffer.from('{"state":"ON"}')): IPublishPacket {
+  return { cmd: 'publish', dup: false, qos: 0, retain, topic, payload };
+}
 
 /**
  * Creates a fresh MqttService, merging config overrides over baseConfig.
@@ -262,8 +275,15 @@ describe('MqttService', () => {
       const listener = jest.fn();
       service.on('message', listener);
       await connectService(service);
-      handlers['message']('matterbridge/device1', Buffer.from('{"state":"ON"}'));
-      expect(listener).toHaveBeenCalledWith('matterbridge/device1', '{"state":"ON"}');
+      const packet = createPublishPacket(false);
+      handlers['message']('matterbridge/device1', Buffer.from('{"state":"ON"}'), packet);
+      expect(listener).toHaveBeenCalledWith('matterbridge/device1', '{"state":"ON"}', packet);
+    });
+
+    it('should log retained messages when the underlying client marks a packet as retained', async () => {
+      await connectService(createService());
+      handlers['message']('matterbridge/device1', Buffer.from('{"state":"ON"}'), createPublishPacket(true));
+      expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/retained message on.*matterbridge\/device1/));
     });
   });
 
@@ -307,12 +327,20 @@ describe('MqttService', () => {
       expect(mockSubscribeAsync).not.toHaveBeenCalled();
     });
 
-    it('should call subscribeAsync with the topic when connected', async () => {
+    it('should call subscribeAsync with retained replay enabled when connected with MQTT 5', async () => {
       const service = createService();
       await connectService(service);
       mockMqttClient.connected = true;
       await service.subscribe('test/topic');
-      expect(mockSubscribeAsync).toHaveBeenCalledWith('test/topic');
+      expect(mockSubscribeAsync).toHaveBeenCalledWith('test/topic', { qos: 2, rh: 0 });
+    });
+
+    it('should call subscribeAsync without MQTT 5 retain handling when connected with MQTT 3.1.1', async () => {
+      const service = createService({ protocolVersion: 4 });
+      await connectService(service);
+      mockMqttClient.connected = true;
+      await service.subscribe('test/topic');
+      expect(mockSubscribeAsync).toHaveBeenCalledWith('test/topic', { qos: 2 });
     });
 
     it('should log debug when subscribeAsync resolves', async () => {

@@ -19,6 +19,7 @@ import {
   loggerDebugSpy,
   loggerErrorSpy,
   loggerInfoSpy,
+  loggerLogSpy,
   loggerWarnSpy,
   matterbridge,
   setDebug,
@@ -26,7 +27,9 @@ import {
   startMatterbridgeEnvironment,
   stopMatterbridgeEnvironment,
 } from 'matterbridge/jestutils';
+import { LogLevel } from 'matterbridge/logger';
 import { waiter } from 'matterbridge/utils';
+import type { IPublishPacket } from 'mqtt';
 
 import initializePlugin, { MqttPlatform, type MqttPlatformConfig } from './module.js';
 import { MqttService } from './mqtt.js';
@@ -35,6 +38,22 @@ const mqttConnectSpy = jest.spyOn(MqttService.prototype, 'connect').mockResolved
 const mqttCloseSpy = jest.spyOn(MqttService.prototype, 'close').mockResolvedValue(true);
 const mqttSubscribeSpy = jest.spyOn(MqttService.prototype, 'subscribe').mockResolvedValue(true);
 const mqttPublishSpy = jest.spyOn(MqttService.prototype, 'publish').mockResolvedValue(true);
+
+/**
+ * Creates a minimal MQTT publish packet for platform message event tests.
+ *
+ * @param {string} topic The MQTT topic carried by the packet.
+ * @param {Buffer | string} payload The MQTT payload carried by the packet.
+ * @param {boolean} [retain] Whether the packet should be marked as retained.
+ * @returns {IPublishPacket} A publish packet suitable for MqttService emit tests.
+ */
+function createPublishPacket(topic: string, payload: Buffer | string, retain = false): IPublishPacket {
+  return { cmd: 'publish', dup: false, qos: 0, retain, topic, payload };
+}
+
+function handleMqttMessage(platform: MqttPlatform, topic: string, payload: string, retain = false): void {
+  platform.mqttMessageHandler(topic, payload, createPublishPacket(topic, payload, retain));
+}
 
 await setupTest(NAME, false);
 
@@ -76,7 +95,7 @@ describe('MqttPlatform', () => {
   it('should throw error in load when version is not valid', () => {
     // oxlint-disable-next-line typescript/no-misused-spread
     expect(() => initializePlugin({ ...matterbridge, matterbridgeVersion: '1.0.0' }, log, config)).toThrow(
-      'This plugin requires Matterbridge version >= "3.8.0". Please update Matterbridge to the latest version in the frontend.',
+      'This plugin requires Matterbridge version >= "3.8.1". Please update Matterbridge to the latest version in the frontend.',
     );
   });
 
@@ -123,7 +142,7 @@ describe('MqttPlatform', () => {
     expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringMatching(/MQTT error/));
     loggerErrorSpy.mockClear();
 
-    mqttService.emit('message', `${config.topic}/light1/config/root`, 'wrong payload');
+    mqttService.emit('message', `${config.topic}/light1/config/root`, 'wrong payload', createPublishPacket(`${config.topic}/light1/config/root`, 'wrong payload'));
     await waiter('Failed to parse', () => loggerErrorSpy.mock.calls.some((c) => /Failed to parse MQTT message/.test(c[0])), false, 100, 10);
     expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringMatching(/Failed to parse MQTT message/));
     loggerErrorSpy.mockClear();
@@ -132,18 +151,33 @@ describe('MqttPlatform', () => {
       'message',
       `${config.topic}/light1/config/root`,
       JSON.stringify({
-        deviceTypes: ['OnOff Light'],
+        deviceTypes: ['OnOffLight'],
         clusters: {
           BridgedDeviceBasicInformation: { nodeLabel: 'Light 1' },
           LevelControl: { onLevel: 128 },
         },
       }),
+      createPublishPacket(
+        `${config.topic}/light1/config/root`,
+        JSON.stringify({
+          deviceTypes: ['OnOffLight'],
+          clusters: {
+            BridgedDeviceBasicInformation: { nodeLabel: 'Light 1' },
+            LevelControl: { onLevel: 128 },
+          },
+        }),
+      ),
     );
     await waiter('MQTT message config', () => loggerDebugSpy.mock.calls.some((c) => /MQTT message on/.test(c[0])), false, 100, 10);
     expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/MQTT message on/));
     loggerDebugSpy.mockClear();
 
-    mqttService.emit('message', `${config.topic}/light1/state/root`, JSON.stringify({ OnOff: { onOff: false }, LevelControl: { currentLevel: 254 } }));
+    mqttService.emit(
+      'message',
+      `${config.topic}/light1/state/root`,
+      JSON.stringify({ OnOff: { onOff: false }, LevelControl: { currentLevel: 254 } }),
+      createPublishPacket(`${config.topic}/light1/state/root`, JSON.stringify({ OnOff: { onOff: false }, LevelControl: { currentLevel: 254 } })),
+    );
     await waiter('MQTT message state', () => loggerDebugSpy.mock.calls.some((c) => /MQTT message on/.test(c[0])), false, 100, 10);
     expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/MQTT message on/));
     loggerDebugSpy.mockClear();
@@ -202,46 +236,143 @@ describe('MqttPlatform', () => {
 
   describe('mqttMessageHandler', () => {
     it('should log error when payload is not valid JSON', () => {
-      platform.mqttMessageHandler(`${config.topic}/light1/config/root`, 'invalid json');
+      handleMqttMessage(platform, `${config.topic}/light1/config/root`, 'invalid json');
       expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringMatching(/Failed to parse MQTT message/));
     });
 
     it('should log warn when topic does not match expected format', () => {
-      platform.mqttMessageHandler('invalid/topic', JSON.stringify({ key: 'value' }));
+      handleMqttMessage(platform, 'invalid/topic', JSON.stringify({ key: 'value' }));
       expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/does not match expected format/));
     });
 
     it('should log info for a config message', () => {
-      platform.mqttMessageHandler(`${config.topic}/light1/config/root`, JSON.stringify({ deviceTypes: ['OnOff Light'] }));
+      handleMqttMessage(platform, `${config.topic}/light1/config/root`, JSON.stringify({ deviceTypes: ['OnOffLight'] }));
       expect(loggerInfoSpy).toHaveBeenCalledWith(expect.stringMatching(/Received/));
+    });
+
+    it('should log retained when packet is retained', () => {
+      const topic = `${config.topic}/light1/config/root`;
+      const payload = JSON.stringify({ deviceTypes: ['OnOffLight'] });
+      handleMqttMessage(platform, topic, payload, true);
+      expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/MQTT retained message on/));
+    });
+
+    it('should destroy device when config message has empty payload', () => {
+      const topic = `${config.topic}/light1/config/root`;
+      const destroyDeviceSpy = jest.spyOn(platform, 'destroyDevice').mockImplementation(() => {});
+      handleMqttMessage(platform, topic, '');
+      expect(loggerLogSpy).toHaveBeenCalledWith(LogLevel.DEBUG, `MQTT message on '${topic}': empty payload`);
+      expect(loggerInfoSpy).toHaveBeenCalledWith(expect.stringMatching(/treating as device deletion request/));
+      expect(destroyDeviceSpy).toHaveBeenCalledWith('light1');
+      destroyDeviceSpy.mockRestore();
+    });
+
+    it('should destroy device when retained config message has empty payload', () => {
+      const topic = `${config.topic}/retained-light/config/root`;
+      const destroyDeviceSpy = jest.spyOn(platform, 'destroyDevice').mockImplementation(() => {});
+      handleMqttMessage(platform, topic, '', true);
+      expect(loggerLogSpy).toHaveBeenCalledWith(LogLevel.DEBUG, `MQTT retained message on '${topic}': empty payload`);
+      expect(loggerInfoSpy).toHaveBeenCalledWith(expect.stringMatching(/treating as device deletion request/));
+      expect(destroyDeviceSpy).toHaveBeenCalledWith('retained-light');
+      destroyDeviceSpy.mockRestore();
+    });
+
+    it('should log warn when config deviceTypes is missing', () => {
+      handleMqttMessage(platform, `${config.topic}/light1/config/root`, JSON.stringify({ clusters: {} }));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/deviceTypes.*missing or not an array/));
+    });
+
+    it('should log warn when config payload is not an object', () => {
+      const createDeviceSpy = jest.spyOn(platform, 'createDevice');
+      handleMqttMessage(platform, `${config.topic}/light1/config/root`, JSON.stringify(null));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/config is missing or not an object/));
+      expect(createDeviceSpy).not.toHaveBeenCalled();
+      createDeviceSpy.mockRestore();
+    });
+
+    it('should log warn when config deviceTypes is not an array', () => {
+      const createDeviceSpy = jest.spyOn(platform, 'createDevice');
+      handleMqttMessage(platform, `${config.topic}/light1/config/root`, JSON.stringify({ deviceTypes: { OnOffLight: true }, clusters: {} }));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/deviceTypes.*missing or not an array/));
+      expect(createDeviceSpy).not.toHaveBeenCalled();
+      createDeviceSpy.mockRestore();
+    });
+
+    it('should log warn when config clusters is missing', () => {
+      handleMqttMessage(platform, `${config.topic}/light1/config/root`, JSON.stringify({ deviceTypes: ['OnOffLight'] }));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/clusters.*missing or not an object/));
+    });
+
+    it('should log warn when config clusters is null', () => {
+      const createDeviceSpy = jest.spyOn(platform, 'createDevice');
+      handleMqttMessage(platform, `${config.topic}/light1/config/root`, JSON.stringify({ deviceTypes: ['OnOffLight'], clusters: null }));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/clusters.*missing or not an object/));
+      expect(createDeviceSpy).not.toHaveBeenCalled();
+      createDeviceSpy.mockRestore();
     });
 
     it('should log info for a state message', () => {
       platform.isConfigured = true; // Set to true to allow state updates to be processed
-      platform.mqttMessageHandler(`${config.topic}/sensor1/state/root`, JSON.stringify({ OnOff: { onOff: true } }));
+      handleMqttMessage(platform, `${config.topic}/sensor1/state/root`, JSON.stringify({ OnOff: { onOff: true } }));
       expect(loggerInfoSpy).toHaveBeenCalledWith(expect.stringMatching(/Received/));
     });
 
+    it('should ignore state message when payload is empty', () => {
+      const topic = `${config.topic}/empty-state/state/root`;
+      const updateHandlerSpy = jest.spyOn(platform, 'updateHandler').mockResolvedValue();
+      platform.isConfigured = true;
+      handleMqttMessage(platform, topic, '');
+      expect(loggerLogSpy).toHaveBeenCalledWith(LogLevel.DEBUG, `MQTT message on '${topic}': empty payload`);
+      expect(loggerDebugSpy).toHaveBeenCalledWith(`MQTT message on '${topic}': empty payload`);
+      expect(platform.state.has(topic)).toBe(false);
+      expect(updateHandlerSpy).not.toHaveBeenCalled();
+      expect(loggerErrorSpy).not.toHaveBeenCalledWith(expect.stringMatching(/Failed to parse MQTT message/));
+      updateHandlerSpy.mockRestore();
+    });
+
+    it('should ignore retained state message when payload is empty', () => {
+      const topic = `${config.topic}/empty-retained-state/state/root`;
+      const updateHandlerSpy = jest.spyOn(platform, 'updateHandler').mockResolvedValue();
+      platform.isConfigured = true;
+      handleMqttMessage(platform, topic, '', true);
+      expect(loggerLogSpy).toHaveBeenCalledWith(LogLevel.DEBUG, `MQTT retained message on '${topic}': empty payload`);
+      expect(loggerDebugSpy).toHaveBeenCalledWith(`MQTT retained message on '${topic}': empty payload`);
+      expect(platform.state.has(topic)).toBe(false);
+      expect(updateHandlerSpy).not.toHaveBeenCalled();
+      expect(loggerErrorSpy).not.toHaveBeenCalledWith(expect.stringMatching(/Failed to parse MQTT message/));
+      updateHandlerSpy.mockRestore();
+    });
+
+    it('should log warn when state payload is not an object', () => {
+      handleMqttMessage(platform, `${config.topic}/sensor1/state/root`, JSON.stringify([]));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/state is missing or not an object/));
+    });
+
+    it('should log warn when state payload is null', () => {
+      handleMqttMessage(platform, `${config.topic}/sensor1/state/root`, JSON.stringify(null));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/state is missing or not an object/));
+    });
+
     it('should log warn for an unrecognized subTopic', () => {
-      platform.mqttMessageHandler(`${config.topic}/switch1/command/root`, JSON.stringify({ key: 'value' }));
+      handleMqttMessage(platform, `${config.topic}/switch1/command/root`, JSON.stringify({ key: 'value' }));
       expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/unrecognized subTopic/));
     });
   });
 
-  describe('createrDevice', () => {
+  describe('createDevice', () => {
     it('should log debug when creating a device', () => {
-      platform.createrDevice('light1', 'root', { deviceTypes: ['OnOff Light'], clusters: {} });
+      platform.createDevice('light1', 'root', { deviceTypes: ['OnOffLight'], clusters: {} });
       expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Creating device with ID light1/));
     });
 
     it('should create a device without BridgedDeviceBasicInformation cluster', () => {
-      platform.createrDevice('light2', 'root', { deviceTypes: ['OnOff Light'], clusters: {} });
+      platform.createDevice('light2', 'root', { deviceTypes: ['OnOffLight'], clusters: {} });
       expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Creating device with ID light2/));
     });
 
     it('should create a device with BridgedDeviceBasicInformation cluster attributes', () => {
-      platform.createrDevice('light3', 'root', {
-        deviceTypes: ['OnOff Light'],
+      platform.createDevice('light3', 'root', {
+        deviceTypes: ['OnOffLight'],
         clusters: {
           BridgedDeviceBasicInformation: {
             nodeLabel: 'My Light',
@@ -259,35 +390,59 @@ describe('MqttPlatform', () => {
       expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Creating device with ID light3/));
     });
 
+    it('should validate the serial number and node label before creating a device', () => {
+      const validateDeviceSpy = jest.spyOn(platform, 'validateDevice').mockReturnValue(false);
+      const setSelectDeviceSpy = jest.spyOn(platform, 'setSelectDevice');
+      platform.createDevice('blocked-light', 'root', {
+        deviceTypes: ['OnOffLight'],
+        clusters: {
+          BridgedDeviceBasicInformation: {
+            nodeLabel: 'Blocked Light',
+            serialNumber: 'BLOCKED-001',
+          },
+        },
+      });
+      expect(setSelectDeviceSpy).toHaveBeenCalledWith('BLOCKED-001', 'Blocked Light');
+      expect(validateDeviceSpy).toHaveBeenCalledWith(['BLOCKED-001', 'Blocked Light']);
+      expect(loggerDebugSpy).not.toHaveBeenCalledWith(expect.stringMatching(/Created Bridged Device Basic Information Cluster/));
+      validateDeviceSpy.mockRestore();
+      setSelectDeviceSpy.mockRestore();
+    });
+
     it('should create a device with an unknown device type', () => {
-      platform.createrDevice('sensor1', 'root', { deviceTypes: ['UnknownType'], clusters: {} });
+      platform.createDevice('sensor1', 'root', { deviceTypes: ['UnknownType'], clusters: {} });
       expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Creating device with ID sensor1/));
     });
 
     it('should warn when a device type is not supported', () => {
-      platform.createrDevice('unknown1', 'root', { deviceTypes: ['NotADeviceType'], clusters: {} });
+      platform.createDevice('unknown1', 'root', { deviceTypes: ['NotADeviceType'], clusters: {} });
       expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/Device type 'NotADeviceType' is not supported/));
     });
 
+    it('should warn when a cluster is not supported', () => {
+      platform.createDevice('unknown-cluster', 'root', { deviceTypes: ['OnOffLight'], clusters: { NotACluster: {} } });
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/Cluster 'NotACluster' is not supported/));
+    });
+
     it('should create a device with all supported device types', () => {
-      platform.createrDevice('all-types', 'root', {
+      platform.createDevice('all-types', 'root', {
         deviceTypes: [
           // Chapter 2. Utility device types
-          'Power Source',
-          'Electrical Sensor',
+          'PowerSource',
+          'ElectricalSensor',
           // Chapter 4. Lighting device types
-          'OnOff Light',
-          'Dimmable Light',
-          'Color Temperature Light',
-          'Extended Color Light',
+          'OnOffLight',
+          'DimmableLight',
+          'ColorTemperatureLight',
+          'ExtendedColorLight',
           // Chapter 5. Smart plugs/Outlets and other Actuators device types
-          'OnOff Plugin Unit',
-          'Dimmable PlugIn Unit',
-          'Mounted OnOff Control',
-          'Mounted Dimmable Load Control',
+          'OnOffPlugInUnit',
+          'DimmablePlugInUnit',
+          'MountedOnOffControl',
+          'MountedDimmableLoadControl',
           'Pump',
-          'Water Valve',
-          'Irrigation System',
+          'WaterValve',
+          'IrrigationSystem',
         ],
         clusters: {},
       });
@@ -295,43 +450,69 @@ describe('MqttPlatform', () => {
     });
 
     it('should create a Power Source device with replaceable battery cluster', () => {
-      platform.createrDevice('ps-replaceable', 'root', {
-        deviceTypes: ['Power Source'],
+      platform.createDevice('ps-replaceable', 'root', {
+        deviceTypes: ['PowerSource'],
         clusters: { PowerSource: { batReplacementDescription: 'AAA', batQuantity: 3, batPercentRemaining: 200, batChargeLevel: 0 } },
       });
       expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Created Power Source Replaceable Battery Cluster/));
     });
 
     it('should create a Power Source device with rechargeable battery cluster', () => {
-      platform.createrDevice('ps-rechargeable', 'root', {
-        deviceTypes: ['Power Source'],
+      platform.createDevice('ps-rechargeable', 'root', {
+        deviceTypes: ['PowerSource'],
         clusters: { PowerSource: { batChargeState: 0, batFunctionalWhileCharging: true } },
       });
       expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Created Power Source Rechargeable Battery Cluster/));
     });
 
     it('should create a Power Source device with battery cluster', () => {
-      platform.createrDevice('ps-battery', 'root', {
-        deviceTypes: ['Power Source'],
+      platform.createDevice('ps-battery', 'root', {
+        deviceTypes: ['PowerSource'],
         clusters: { PowerSource: { batChargeLevel: 0 } },
       });
       expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Created Power Source Battery Cluster/));
     });
 
     it('should create a Power Source device with wired cluster', () => {
-      platform.createrDevice('ps-wired', 'root', {
-        deviceTypes: ['Power Source'],
+      platform.createDevice('ps-wired', 'root', {
+        deviceTypes: ['PowerSource'],
         clusters: { PowerSource: { wiredCurrentType: 0 } },
       });
       expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Created Power Source Wired Cluster/));
     });
 
     it('should create a Soil Sensor device', () => {
-      platform.createrDevice('soil1', 'root', {
-        deviceTypes: ['Soil Sensor'],
+      platform.createDevice('soil1', 'root', {
+        deviceTypes: ['SoilSensor'],
         clusters: {},
       });
       expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Creating device with ID soil1/));
+    });
+  });
+
+  describe('destroyDevice', () => {
+    it('should warn when device is not registered', () => {
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-ignore accessing inherited method for testing
+      const getDeviceByIdSpy = jest.spyOn(platform, 'getDeviceById').mockReturnValue(null);
+      platform.destroyDevice('missing-device');
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/is not registered/));
+      getDeviceByIdSpy.mockRestore();
+    });
+
+    it('should unregister device when it is registered', () => {
+      const mockDevice = { id: 'light1' };
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-ignore accessing inherited method for testing
+      const getDeviceByIdSpy = jest.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-ignore accessing inherited method for testing
+      const unregisterDeviceSpy = jest.spyOn(platform, 'unregisterDevice').mockResolvedValue();
+      platform.destroyDevice('light1');
+      expect(loggerInfoSpy).toHaveBeenCalledWith("Destroying device with ID 'light1'");
+      expect(unregisterDeviceSpy).toHaveBeenCalledWith(mockDevice);
+      unregisterDeviceSpy.mockRestore();
+      getDeviceByIdSpy.mockRestore();
     });
   });
 
@@ -345,9 +526,22 @@ describe('MqttPlatform', () => {
       expect(loggerInfoSpy).toHaveBeenCalledWith('onConfigure called');
     });
 
-    it('should warn when state topic does not match expected format', async () => {
-      platform.state.set('invalid-topic', JSON.stringify({ OnOff: { onOff: true } }));
+    it('should replay stored state through updateHandler', async () => {
+      const updateHandlerSpy = jest.spyOn(platform, 'updateHandler').mockResolvedValue();
+      platform.state.set(`${config.topic}/light1/state/root`, JSON.stringify({ OnOff: { onOff: true } }));
       await platform.onConfigure();
+      expect(updateHandlerSpy).toHaveBeenCalledWith(`${config.topic}/light1/state/root`, JSON.stringify({ OnOff: { onOff: true } }));
+      updateHandlerSpy.mockRestore();
+    });
+  });
+
+  describe('updateHandler', () => {
+    beforeEach(() => {
+      platform.state.clear();
+    });
+
+    it('should warn when state topic does not match expected format', async () => {
+      await platform.updateHandler('invalid-topic', JSON.stringify({ OnOff: { onOff: true } }));
       expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/does not match expected format/));
     });
 
@@ -355,8 +549,7 @@ describe('MqttPlatform', () => {
       // oxlint-disable-next-line typescript/ban-ts-comment
       // @ts-ignore accessing inherited method for testing
       const getDeviceByIdSpy = jest.spyOn(platform, 'getDeviceById').mockImplementation(() => null);
-      platform.state.set(`${config.topic}/unknownDevice/state/root`, JSON.stringify({ OnOff: { onOff: true } }));
-      await platform.onConfigure();
+      await platform.updateHandler(`${config.topic}/unknownDevice/state/root`, JSON.stringify({ OnOff: { onOff: true } }));
       expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/is not registered/));
       getDeviceByIdSpy.mockRestore();
     });
@@ -367,8 +560,7 @@ describe('MqttPlatform', () => {
       // oxlint-disable-next-line typescript/ban-ts-comment
       // @ts-ignore accessing inherited method for testing
       const getDeviceByIdSpy = jest.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
-      platform.state.set(`${config.topic}/light1/state/sensor`, JSON.stringify({ OnOff: { onOff: true } }));
-      await platform.onConfigure();
+      await platform.updateHandler(`${config.topic}/light1/state/sensor`, JSON.stringify({ OnOff: { onOff: true } }));
       expect(mockSetCluster).not.toHaveBeenCalled();
       getDeviceByIdSpy.mockRestore();
     });
@@ -380,8 +572,7 @@ describe('MqttPlatform', () => {
       // oxlint-disable-next-line typescript/ban-ts-comment
       // @ts-ignore accessing inherited method for testing
       const getDeviceByIdSpy = jest.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
-      platform.state.set(`${config.topic}/light1/state/root`, JSON.stringify({ UnknownCluster: { attr: true } }));
-      await platform.onConfigure();
+      await platform.updateHandler(`${config.topic}/light1/state/root`, JSON.stringify({ UnknownCluster: { attr: true } }));
       expect(mockWarn).toHaveBeenCalledWith(expect.stringMatching(/does not have cluster/));
       expect(mockSetCluster).not.toHaveBeenCalled();
       getDeviceByIdSpy.mockRestore();
@@ -394,8 +585,7 @@ describe('MqttPlatform', () => {
       // oxlint-disable-next-line typescript/ban-ts-comment
       // @ts-ignore accessing inherited method for testing
       const getDeviceByIdSpy = jest.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
-      platform.state.set(`${config.topic}/light1/state/root`, JSON.stringify({ OnOff: { onOff: false } }));
-      await platform.onConfigure();
+      await platform.updateHandler(`${config.topic}/light1/state/root`, JSON.stringify({ OnOff: { onOff: false } }));
       expect(mockDebug).toHaveBeenCalledWith(expect.stringMatching(/Setting cluster 'OnOff'/));
       expect(mockDevice.hasClusterServer).toHaveBeenCalledWith('OnOff');
       expect(mockSetCluster).toHaveBeenCalledWith('OnOff', { onOff: false }, expect.anything());
@@ -413,8 +603,7 @@ describe('MqttPlatform', () => {
       // oxlint-disable-next-line typescript/ban-ts-comment
       // @ts-ignore accessing inherited method for testing
       const getDeviceByIdSpy = jest.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
-      platform.state.set(`${config.topic}/light1/state/root`, JSON.stringify({ OnOff: { onOff: true }, UnknownCluster: { attr: 1 } }));
-      await platform.onConfigure();
+      await platform.updateHandler(`${config.topic}/light1/state/root`, JSON.stringify({ OnOff: { onOff: true }, UnknownCluster: { attr: 1 } }));
       expect(mockSetCluster).toHaveBeenCalledTimes(1);
       expect(mockSetCluster).toHaveBeenCalledWith('OnOff', { onOff: true }, expect.anything());
       expect(mockWarn).toHaveBeenCalledWith(expect.stringMatching(/does not have cluster/));

@@ -46,7 +46,7 @@ jobs:
         run: npm -v
 
       - name: Clone matterbridge repo branch main
-        run: git clone --depth 1 --single-branch --no-tags -b main https://github.com/Luligu/matterbridge.git ../matterbridge
+        run: git clone --depth 1 --single-branch --no-tags  -b dev https://github.com/Luligu/matterbridge.git ../matterbridge
 
       - name: Install matterbridge dependencies
         working-directory: ../matterbridge
