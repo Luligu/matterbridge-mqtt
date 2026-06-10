@@ -156,7 +156,8 @@
         "jsdoc/require-property-name": "off",
         "jsdoc/require-property-description": "off",
         "jsdoc/require-property-type": "off",
-        "import/first": "off"
+        "import/first": "off",
+        "import/no-relative-parent-imports": "off"
       }
     },
     /* Vitest */
@@ -173,9 +174,11 @@
         "typescript/no-unsafe-type-assertion": "off",
         "typescript/no-explicit-any": "off",
         "typescript/unbound-method": "off",
+        "typescript/consistent-type-imports": "off",
         "vitest/require-to-throw-message": "off",
         "vitest/no-conditional-tests": "off",
         "vitest/no-standalone-expect": "off",
+        "vitest/require-test-timeout": "off",
         "jsdoc/require-param": "off",
         "jsdoc/require-param-type": "off",
         "jsdoc/require-param-description": "off",
@@ -188,7 +191,8 @@
         "jsdoc/require-property-name": "off",
         "jsdoc/require-property-description": "off",
         "jsdoc/require-property-type": "off",
-        "import/first": "off"
+        "import/first": "off",
+        "import/no-relative-parent-imports": "off"
       }
     }
   ]

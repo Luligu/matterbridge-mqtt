@@ -101,6 +101,10 @@
     "test:watch": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --watch",
     "test:verbose": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --verbose",
     "test:coverage": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --coverage",
+    "test:vitest": "vitest run",
+    "test:vitest:watch": "vitest --reporter verbose",
+    "test:vitest:verbose": "vitest run --reporter verbose",
+    "test:vitest:coverage": "vitest run --reporter verbose --coverage",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt",
@@ -115,7 +119,7 @@
     "softReset": "npm install --no-fund --no-audit && npm prune --no-fund --no-audit && npm link --no-fund --no-audit matterbridge && npm run build && npm run typecheck",
     "checkDependencies": "ncu",
     "updateDependencies": "ncu -u && npm run reset",
-    "automator": "node scripts/run-automator.mjs --plugin --no-vitest --experimental",
+    "automator": "node scripts/run-automator.mjs --plugin --no-jest --experimental",
     "runMeBeforePublish": "npm run cleanBuild && npm run format && npm run lint && npm run build && npm run typecheck && npm run test:coverage",
     "prepublishOnly": "npm run clean && npx tsc --project tsconfig.build.production.json && npm pkg delete devDependencies scripts && npx shx rm -rf node_modules/* node_modules/.[!.]* node_modules/..?* package-lock.json npm-shrinkwrap.json && npm install  --no-fund --no-audit --omit=dev && npm shrinkwrap --omit=dev",
     "npmPack": "npx shx cp package.json package.json.backup && node scripts/version.mjs dev && npm run prepublishOnly && npm pack && npx shx cp package.json.backup package.json && npx shx rm -f package.json.backup && npm run reset",
@@ -138,7 +142,8 @@
     "@jest/globals": "30.4.1",
     "@types/jest": "30.0.0",
     "@types/node": "25.9.2",
-    "@typescript/native-preview": "7.0.0-dev.20260609.1",
+    "@typescript/native-preview": "7.0.0-dev.20260610.1",
+    "@vitest/coverage-istanbul": "4.1.8",
     "cross-env": "10.1.0",
     "jest": "30.4.2",
     "npm-check-updates": "22.2.3",
@@ -146,6 +151,7 @@
     "oxlint": "1.69.0",
     "oxlint-tsgolint": "0.23.0",
     "shx": "0.4.0",
-    "ts-jest": "29.4.11"
+    "ts-jest": "29.4.11",
+    "vitest": "4.1.8"
   }
 }

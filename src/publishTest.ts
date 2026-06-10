@@ -1,5 +1,3 @@
-// oxlint-disable no-console unicorn/no-process-exit
-/* istanbul ignore file */
 /**
  * Stand-alone MQTT publish test for matterbridge-mqtt.
  *
@@ -30,6 +28,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/* istanbul ignore file */
+
+// oxlint-disable no-console unicorn/no-process-exit
 
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';

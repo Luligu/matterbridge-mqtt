@@ -1,37 +1,41 @@
 const NAME = 'MqttService';
 
-import { jest } from '@jest/globals';
-import { loggerDebugSpy, loggerErrorSpy, loggerWarnSpy, setupTest } from 'matterbridge/jestutils';
+import { loggerDebugSpy, loggerErrorSpy, loggerWarnSpy, setupTest } from 'matterbridge/vitest-utils';
 import type { IPublishPacket } from 'mqtt';
 
 import type { MqttPlatformConfig } from '../src/module.js';
 import type { MqttService as MqttServiceType } from '../src/mqtt.js';
 
-// --- Mock infrastructure (must be defined before jest.unstable_mockModule) ---
+// --- Mock infrastructure (hoisted so vi.mock factories can reference it) ---
 
-const mockEndAsync = jest.fn<() => Promise<void>>();
-const mockSubscribeAsync = jest.fn<(topic: string, opts?: Record<string, unknown>) => Promise<unknown>>();
-const mockPublishAsync = jest.fn<() => Promise<void>>();
-const mockOn = jest.fn<(event: string, handler: (...args: unknown[]) => void) => void>();
+const { mockEndAsync, mockSubscribeAsync, mockPublishAsync, mockOn, mockMqttClient, mockConnect, mockReadFileSync } = vi.hoisted(() => {
+  const mockEndAsync = vi.fn<() => Promise<void>>();
+  const mockSubscribeAsync = vi.fn<(topic: string, opts?: Record<string, unknown>) => Promise<unknown>>();
+  const mockPublishAsync = vi.fn<() => Promise<void>>();
+  const mockOn = vi.fn<(event: string, handler: (...args: unknown[]) => void) => void>();
 
-const mockMqttClient = {
-  connected: false,
-  on: mockOn,
-  subscribeAsync: mockSubscribeAsync,
-  publishAsync: mockPublishAsync,
-  endAsync: mockEndAsync,
-};
+  const mockMqttClient = {
+    connected: false,
+    on: mockOn,
+    subscribeAsync: mockSubscribeAsync,
+    publishAsync: mockPublishAsync,
+    endAsync: mockEndAsync,
+  };
 
-const mockConnect = jest.fn<(host: string, opts?: Record<string, unknown>) => Promise<typeof mockMqttClient>>();
-const mockReadFileSync = jest.fn<() => Buffer>();
+  const mockConnect = vi.fn<(host: string, opts?: Record<string, unknown>) => Promise<typeof mockMqttClient>>();
+  const mockReadFileSync = vi.fn<() => Buffer>();
 
-jest.unstable_mockModule('mqtt', () => ({
+  return { mockEndAsync, mockSubscribeAsync, mockPublishAsync, mockOn, mockMqttClient, mockConnect, mockReadFileSync };
+});
+
+vi.mock('mqtt', () => ({
   connectAsync: mockConnect,
 }));
 
-jest.unstable_mockModule('node:fs', () => ({
-  readFileSync: mockReadFileSync,
-}));
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>();
+  return { ...actual, readFileSync: mockReadFileSync };
+});
 
 // --- SUT: imported dynamically so the mocks above are applied ---
 
@@ -39,25 +43,13 @@ let MqttService: typeof MqttServiceType;
 
 // --- Test data ---
 
+// node:fs is mocked above for the SUT's certificate reads, so load the config with the real fs.
+const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs');
+
+const defaultConfig: MqttPlatformConfig = JSON.parse(readFileSync('matterbridge-mqtt.config.json', 'utf-8'));
 const baseConfig: MqttPlatformConfig = {
-  name: 'matterbridge-mqtt',
-  type: 'DynamicPlatform',
-  version: '1.0.0',
-  host: 'mqtt://localhost',
-  port: 1883,
-  protocolVersion: 5,
-  username: '',
-  password: '',
-  clientId: '',
-  ca: '',
-  rejectUnauthorized: true,
-  cert: '',
-  key: '',
-  topic: 'matterbridge',
-  whiteList: [],
-  blackList: [],
+  ...defaultConfig,
   debug: false,
-  unregisterOnShutdown: false,
 };
 
 /**
@@ -105,11 +97,10 @@ describe('MqttService', () => {
   });
 
   beforeEach(() => {
-    jest.resetAllMocks();
     mockMqttClient.connected = false;
     handlers = {};
 
-    // Re-register default implementations after resetAllMocks
+    // Register default mock implementations (preserved between tests by clearAllMocks)
     mockConnect.mockResolvedValue(mockMqttClient);
     mockEndAsync.mockResolvedValue();
     mockReadFileSync.mockReturnValue(Buffer.from('file-content'));
@@ -118,6 +109,11 @@ describe('MqttService', () => {
     mockOn.mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
       handlers[event] = handler;
     });
+  });
+
+  afterEach(() => {
+    // Clear call history only; keep the logger spy implementations installed by setupTest intact
+    vi.clearAllMocks();
   });
 
   // -------------------------------------------------------------------------
@@ -236,7 +232,7 @@ describe('MqttService', () => {
     it('should emit "connect" when the underlying client fires a connect event', async () => {
       const service = createService();
       await connectService(service);
-      const listener = jest.fn();
+      const listener = vi.fn<(...args: unknown[]) => void>();
       service.on('connect', listener);
       handlers['connect']();
       expect(listener).toHaveBeenCalledTimes(1);
@@ -244,7 +240,7 @@ describe('MqttService', () => {
 
     it('should emit "close" when the underlying client fires a close event', async () => {
       const service = createService();
-      const listener = jest.fn();
+      const listener = vi.fn<(...args: unknown[]) => void>();
       service.on('close', listener);
       await connectService(service);
       handlers['close']();
@@ -253,7 +249,7 @@ describe('MqttService', () => {
 
     it('should emit "reconnect" when the underlying client fires a reconnect event', async () => {
       const service = createService();
-      const listener = jest.fn();
+      const listener = vi.fn<(...args: unknown[]) => void>();
       service.on('reconnect', listener);
       await connectService(service);
       handlers['reconnect']();
@@ -262,7 +258,7 @@ describe('MqttService', () => {
 
     it('should emit "error" carrying the original Error when the underlying client fires an error event', async () => {
       const service = createService();
-      const listener = jest.fn();
+      const listener = vi.fn<(...args: unknown[]) => void>();
       service.on('error', listener);
       await connectService(service);
       const err = new Error('connection refused');
@@ -272,7 +268,7 @@ describe('MqttService', () => {
 
     it('should emit "message" with topic and UTF-8 string payload when the underlying client fires a message event', async () => {
       const service = createService();
-      const listener = jest.fn();
+      const listener = vi.fn<(...args: unknown[]) => void>();
       service.on('message', listener);
       await connectService(service);
       const packet = createPublishPacket(false);
@@ -355,7 +351,7 @@ describe('MqttService', () => {
       const service = createService();
       await connectService(service);
       mockMqttClient.connected = true;
-      const listener = jest.fn();
+      const listener = vi.fn<(...args: unknown[]) => void>();
       service.on('subscribed', listener);
       expect(await service.subscribe('test/topic')).toBe(true);
       expect(listener).toHaveBeenCalledWith('test/topic');
@@ -410,7 +406,7 @@ describe('MqttService', () => {
       const service = createService();
       await connectService(service);
       mockMqttClient.connected = true;
-      const listener = jest.fn();
+      const listener = vi.fn<(...args: unknown[]) => void>();
       service.on('published', listener);
       expect(await service.publish('test/topic', 'payload')).toBe(true);
       expect(listener).toHaveBeenCalledWith('test/topic', 'payload');
