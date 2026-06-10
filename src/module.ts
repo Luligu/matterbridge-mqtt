@@ -333,7 +333,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       id: deviceId,
     });
 
-    /** Bridged Device Basic Information Cluster */
+    /** Bridged Device Basic Information Cluster - BridgedDeviceBasicInformationServer */
     device.createDefaultBridgedDeviceBasicInformationClusterServer(
       deviceName,
       serialNumber,
@@ -349,7 +349,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       `Created Bridged Device Basic Information Cluster for device ${deviceId} with attributes: ${debugStringify({ ...bridgedDeviceBasicInformationCluster, nodeLabel: deviceName, serialNumber: serialNumber })}`,
     );
 
-    /** Power Source Cluster */
+    /** Power Source Cluster - MatterbridgePowerSourceServer */
     if (jsonPayload.deviceTypes.includes('PowerSource')) {
       const powerSourceCluster: Partial<PowerSource.Attributes> = jsonPayload.clusters.PowerSource || {};
       if (powerSourceCluster.batReplacementDescription !== undefined || powerSourceCluster.batQuantity !== undefined) {
