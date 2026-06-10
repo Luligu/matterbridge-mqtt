@@ -296,7 +296,9 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       bridgedDeviceBasicInformationCluster.hardwareVersion,
       bridgedDeviceBasicInformationCluster.hardwareVersionString,
     );
-    this.log.debug(`Created Bridged Device Basic Information Cluster for device ${deviceId} with attributes: ${debugStringify(bridgedDeviceBasicInformationCluster)}`);
+    this.log.debug(
+      `Created Bridged Device Basic Information Cluster for device ${deviceId} with attributes: ${debugStringify({ ...bridgedDeviceBasicInformationCluster, nodeLabel: deviceName, serialNumber: serialNumber })}`,
+    );
 
     /** Power Source Cluster */
     if (jsonPayload.deviceTypes.includes('PowerSource')) {
