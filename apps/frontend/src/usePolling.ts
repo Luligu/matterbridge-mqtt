@@ -9,9 +9,9 @@ export interface PollState<T> {
 /**
  * Polls an async fetcher on an interval and returns the latest data or error.
  *
- * @param fetcher - The async function to call on each tick.
- * @param intervalMs - The polling interval in milliseconds.
- * @returns The latest fetched data and the last error message, if any.
+ * @param {() => Promise<T>} fetcher - The async function to call on each tick.
+ * @param {number} intervalMs - The polling interval in milliseconds.
+ * @returns {PollState<T>} The latest fetched data and the last error message, if any.
  */
 export function usePolling<T>(fetcher: () => Promise<T>, intervalMs: number): PollState<T> {
   const [data, setData] = useState<T | undefined>(undefined);

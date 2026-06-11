@@ -37,9 +37,9 @@ export interface ApiMessage {
 /**
  * Builds the absolute URL for a plugin API resource.
  *
- * @param path - The single resource path segment (e.g. `devices`).
- * @param query - Optional query string parameters.
- * @returns The absolute URL including the plugin base path.
+ * @param {string} path - The single resource path segment (e.g. `devices`).
+ * @param {Record<string, string>} [query] - Optional query string parameters.
+ * @returns {string} The absolute URL including the plugin base path.
  */
 export function apiUrl(path: string, query?: Record<string, string>): string {
   const url = `${import.meta.env.BASE_URL}api/${path}`;
@@ -50,11 +50,11 @@ export function apiUrl(path: string, query?: Record<string, string>): string {
 /**
  * Calls the plugin API and parses the JSON response.
  *
- * @param method - The HTTP method.
- * @param path - The single resource path segment (e.g. `devices`).
- * @param query - Optional query string parameters.
- * @param body - Optional JSON request body (for POST/PUT/PATCH).
- * @returns The parsed JSON response, or `undefined` for a 204 No Content.
+ * @param {ApiMethod} method - The HTTP method.
+ * @param {string} path - The single resource path segment (e.g. `devices`).
+ * @param {Record<string, string>} [query] - Optional query string parameters.
+ * @param {unknown} [body] - Optional JSON request body (for POST/PUT/PATCH).
+ * @returns {Promise<T | undefined>} The parsed JSON response, or `undefined` for a 204 No Content.
  * @throws {Error} When the response status is not ok.
  */
 export async function apiFetch<T = unknown>(method: ApiMethod, path: string, query?: Record<string, string>, body?: unknown): Promise<T | undefined> {
@@ -73,7 +73,7 @@ export async function apiFetch<T = unknown>(method: ApiMethod, path: string, que
 /**
  * Fetches the device table from the plugin.
  *
- * @returns The list of devices with their retained config/state/subscribe payloads.
+ * @returns {Promise<ApiDevice[]>} The list of devices with their retained config/state/subscribe payloads.
  */
 export async function getDevices(): Promise<ApiDevice[]> {
   return (await apiFetch<ApiDevice[]>('GET', 'devices')) ?? [];
@@ -82,7 +82,7 @@ export async function getDevices(): Promise<ApiDevice[]> {
 /**
  * Fetches the recent incoming MQTT messages from the plugin (newest first).
  *
- * @returns The list of recent incoming MQTT messages.
+ * @returns {Promise<ApiMessage[]>} The list of recent incoming MQTT messages.
  */
 export async function getMessages(): Promise<ApiMessage[]> {
   return (await apiFetch<ApiMessage[]>('GET', 'messages')) ?? [];
@@ -91,7 +91,7 @@ export async function getMessages(): Promise<ApiMessage[]> {
 /**
  * Fetches the recent outgoing MQTT messages (write path) from the plugin (newest first).
  *
- * @returns The list of recent outgoing MQTT messages.
+ * @returns {Promise<ApiMessage[]>} The list of recent outgoing MQTT messages.
  */
 export async function getOutgoing(): Promise<ApiMessage[]> {
   return (await apiFetch<ApiMessage[]>('GET', 'outgoing')) ?? [];

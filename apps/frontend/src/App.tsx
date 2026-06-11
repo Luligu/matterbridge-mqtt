@@ -17,7 +17,7 @@ const POLL_INTERVAL_MS = 2000;
 /**
  * Reads the initial theme mode from localStorage, falling back to the OS preference.
  *
- * @returns The initial theme mode.
+ * @returns {ThemeMode} The initial theme mode.
  */
 function getInitialMode(): ThemeMode {
   const stored = localStorage.getItem(THEME_MODE_KEY);
@@ -28,7 +28,7 @@ function getInitialMode(): ThemeMode {
 /**
  * Single-page app for the matterbridge-mqtt plugin frontend.
  *
- * @returns The rendered page.
+ * @returns {JSX.Element} The rendered page.
  */
 export default function App() {
   const [mode, setMode] = useState<ThemeMode>(getInitialMode);
@@ -49,7 +49,7 @@ export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Container maxWidth="lg">
+      <Container maxWidth="lg" sx={{ pb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, py: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <img src={matterbridgeLogo} alt="Matterbridge" width={64} height={64} />

@@ -13,10 +13,10 @@ const SUBTOPIC_COLOR: Record<string, 'default' | 'primary' | 'success' | 'info' 
 /**
  * Renders a live feed of MQTT messages (newest first) in a compact scrollable panel.
  *
- * @param props - The feed props.
- * @param props.messages - The recent MQTT messages to render.
- * @param props.emptyText - The text shown when there are no messages.
- * @returns The rendered message feed.
+ * @param {object} props - The feed props.
+ * @param {ApiMessage[]} props.messages - The recent MQTT messages to render.
+ * @param {string} [props.emptyText] - The text shown when there are no messages.
+ * @returns {JSX.Element} The rendered message feed.
  */
 export function MessageFeed({ messages, emptyText = 'No MQTT messages yet.' }: { messages: ApiMessage[]; emptyText?: string }) {
   if (messages.length === 0) {

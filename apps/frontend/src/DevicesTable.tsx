@@ -16,11 +16,11 @@ interface ExpandedCell {
 /**
  * A single config/state/subscribe table cell showing a status dot, the last-updated time and an expand affordance.
  *
- * @param props - The cell props.
- * @param props.entry - The retained payload entry, or null when none has been received.
- * @param props.selected - Whether this cell is the currently expanded one.
- * @param props.onClick - Click handler that toggles the expanded payload.
- * @returns The rendered table cell.
+ * @param {object} props - The cell props.
+ * @param {DeviceEntry | null} props.entry - The retained payload entry, or null when none has been received.
+ * @param {boolean} props.selected - Whether this cell is the currently expanded one.
+ * @param {() => void} props.onClick - Click handler that toggles the expanded payload.
+ * @returns {JSX.Element} The rendered table cell.
  */
 function PayloadCell({ entry, selected, onClick }: { entry: DeviceEntry | null; selected: boolean; onClick: () => void }) {
   if (!entry) {
@@ -48,11 +48,11 @@ function PayloadCell({ entry, selected, onClick }: { entry: DeviceEntry | null; 
 /**
  * The expanded payload detail rendered as a full-width row beneath a device.
  *
- * @param props - The detail props.
- * @param props.device - The device the payload belongs to.
- * @param props.kind - The subTopic being shown.
- * @param props.entry - The retained payload entry.
- * @returns The rendered payload detail.
+ * @param {object} props - The detail props.
+ * @param {ApiDevice} props.device - The device the payload belongs to.
+ * @param {CellKind} props.kind - The subTopic being shown.
+ * @param {DeviceEntry} props.entry - The retained payload entry.
+ * @returns {JSX.Element} The rendered payload detail.
  */
 function PayloadDetail({ device, kind, entry }: { device: ApiDevice; kind: CellKind; entry: DeviceEntry }) {
   return (
@@ -70,9 +70,9 @@ function PayloadDetail({ device, kind, entry }: { device: ApiDevice; kind: CellK
 /**
  * Renders the devices table with expandable config/state/subscribe payload cells.
  *
- * @param props - The table props.
- * @param props.devices - The devices to render.
- * @returns The rendered devices table.
+ * @param {object} props - The table props.
+ * @param {ApiDevice[]} props.devices - The devices to render.
+ * @returns {JSX.Element} The rendered devices table.
  */
 export function DevicesTable({ devices }: { devices: ApiDevice[] }) {
   const [expanded, setExpanded] = useState<ExpandedCell | null>(null);
