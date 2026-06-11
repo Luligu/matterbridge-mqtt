@@ -9,6 +9,7 @@
 ![Node.js CI](https://github.com/Luligu/matterbridge-mqtt/actions/workflows/build.yml/badge.svg)
 ![CodeQL](https://github.com/Luligu/matterbridge-mqtt/actions/workflows/codeql.yml/badge.svg)
 [![codecov](https://codecov.io/gh/Luligu/matterbridge-mqtt/branch/main/graph/badge.svg)](https://codecov.io/gh/Luligu/matterbridge-mqtt)
+[![tested with Vitest](https://img.shields.io/badge/tested_with-vitest-6E9F18.svg?logo=vitest&logoColor=white)](https://vitest.dev)
 [![formatted with oxfmt](https://img.shields.io/badge/formatted_with-oxfmt-9BE4E0.svg)](https://oxc.rs/docs/guide/usage/formatter.html)
 [![linted with oxlint](https://img.shields.io/badge/linted_with-oxlint-9BE4E0.svg)](https://oxc.rs/docs/guide/usage/linter.html)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -97,7 +98,7 @@ Device types, clusters and attributes all use their Matter names without spaces:
 
 - **matterbridge/deviceid/config/root**
 
-only the fixed and optional attributes shall be published here
+Publish here only the fixed and optional attributes.
 
 ```typescript
 const config = {
@@ -111,7 +112,7 @@ publish('matterbridge/light1/config/root', JSON.stringify(config), { retain: tru
 
 - **matterbridge/deviceid/state/root**
 
-only the current attributes shall be published here
+Publish here only the current attribute values.
 
 ```typescript
 const state = { OnOff: { onOff: false }, LevelControl: { currentLevel: 254 } };
@@ -122,7 +123,7 @@ publish('matterbridge/deviceid/state/root', JSON.stringify(state), { retain: tru
 
 - **matterbridge/deviceid/subscribe/root**
 
-only the attributes changes that the device want to receive from the controller shall be published here
+Publish here only the attribute changes that the device wants to receive from the controller.
 
 ```typescript
 const subscribe = { OnOff: ['onOff'], LevelControl: ['currentLevel'] };
@@ -131,7 +132,7 @@ publish('matterbridge/deviceid/state/root', JSON.stringify(subscribe), { retain:
 
 ## Subscribe
 
-Each device may subscribe `write` messages:
+Each device may subscribe to `write` messages:
 
 ```typescript
 subscribe('matterbridge/deviceid/write/root', { qos: 2 });
@@ -144,6 +145,18 @@ and will receive all attributes changes it subscribed to.
 ```
 
 ---
+
+# Repository setup
+
+> **Note:** This repository uses an experimental new toolchain. It drops the traditional ESLint / Prettier / TypeScript / Jest stack in favor of a faster, lighter setup.
+
+- **No ESLint, no Prettier** — replaced by the [oxc](https://oxc.rs) stack ([oxlint](https://oxc.rs/docs/guide/usage/linter.html) for linting and [oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) for formatting).
+- **No `typescript` package** — replaced by [tsgo](https://github.com/microsoft/typescript-go) (`@typescript/native-preview`). The `typescript` package is kept only as a publish-time dependency while tsgo is still in preview.
+- **No Jest** — replaced by [Vitest](https://vitest.dev), which natively supports ESM without extra configuration.
+- **Far fewer dependencies** — the installed package count drops from 600+ to around 200.
+- **Much faster lint and format** — oxlint and oxfmt run in a fraction of the time of the ESLint / Prettier pipeline.
+- **Much faster build** — tsgo compiles the project in a fraction of the time of the standard `tsc` build.
+- **Editor support** — use the VS Code extensions for tsgo and oxc to get the same experience inside the editor.
 
 # Todo
 
