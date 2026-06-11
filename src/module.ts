@@ -288,7 +288,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
           }
         }
       } else if (subTopic === 'write') {
-        // 'write' subTopic is used for attribute updates from the device to MQTT
+        // 'write' subTopic is used for attribute updates Matter controller >>> Matterbridge >>> MQTT >>> device
         return;
       }
     } catch (error) {

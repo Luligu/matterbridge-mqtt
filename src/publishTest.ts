@@ -330,4 +330,4 @@ for (const device of DEVICES) {
 }
 
 await client.endAsync();
-console.log(`\nDone. Published config + state for ${DEVICES.length} device(s).`);
+console.log(`\nDone. Published config + state + subscribe for ${DEVICES.length} device(s).`);
