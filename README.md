@@ -9,6 +9,7 @@
 ![Node.js CI](https://github.com/Luligu/matterbridge-mqtt/actions/workflows/build.yml/badge.svg)
 ![CodeQL](https://github.com/Luligu/matterbridge-mqtt/actions/workflows/codeql.yml/badge.svg)
 [![codecov](https://codecov.io/gh/Luligu/matterbridge-mqtt/branch/main/graph/badge.svg)](https://codecov.io/gh/Luligu/matterbridge-mqtt)
+[![tested with Vitest](https://img.shields.io/badge/tested_with-vitest-6E9F18.svg?logo=vitest&logoColor=white)](https://vitest.dev)
 [![formatted with oxfmt](https://img.shields.io/badge/formatted_with-oxfmt-9BE4E0.svg)](https://oxc.rs/docs/guide/usage/formatter.html)
 [![linted with oxlint](https://img.shields.io/badge/linted_with-oxlint-9BE4E0.svg)](https://oxc.rs/docs/guide/usage/linter.html)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -31,7 +32,7 @@ The **matterbridge-mqtt** plugin bridges any MQTT-capable device into the Matter
 - **Zero-code device onboarding** — send a single retained `config` message and Matterbridge automatically creates and registers the corresponding Matter endpoint.
 - **Broad device-type support** — lights (on/off, dimmable, colour-temperature, extended colour), plugs and outlets, mounted switches, sensors (contact, temperature, humidity, pressure, flow, light, occupancy, smoke/CO, air quality, rain, soil, water freeze/leak), pump, water valve, power source, and electrical sensor.
 - **Live state sync** — retained `state` messages drive cluster attribute updates so controllers always see the current device state, even after a restart.
-- **Matter command forwarding** — every Matter command (e.g. `on`, `off`, `moveToLevel`) is published back to the device's `command` topic as a structured JSON payload.
+- **Matter state forwarding** — every Matter attribute change (e.g. `onOff`, `currentLevel`) is published back to the device's `write` topic as a structured JSON payload.
 - **Flexible MQTT connectivity** — configurable broker host, port, protocol version (3/4/5), credentials, client ID, and full TLS support (CA certificate, client certificate/key, `rejectUnauthorized`).
 - **Topic-based multi-device management** — a single broker connection and a single base topic handle an arbitrary number of devices; each device is identified by its `deviceId` path segment.
 
@@ -89,7 +90,7 @@ All topics follow the pattern `<topic>/<deviceId>/<subTopic>/root`, where `<topi
 
 ## Publish
 
-Each device shall publish retained `config` messages and retained `state` messages:
+Each device shall publish retained `config`, `state` and `subscribe` messages:
 
 Device types, clusters and attributes all use their Matter names without spaces: device types (e.g. `PowerSource`, `DimmableLight`), clusters (e.g. `PowerSource`, `OnOff`, `LevelControl`) and attributes (e.g. `onOff`, `currentLevel`).
 
@@ -97,7 +98,7 @@ Device types, clusters and attributes all use their Matter names without spaces:
 
 - **matterbridge/deviceid/config/root**
 
-only the fixed and optional attributes shall be published here
+Publish here only the fixed and optional attributes.
 
 ```typescript
 const config = {
@@ -111,34 +112,52 @@ publish('matterbridge/light1/config/root', JSON.stringify(config), { retain: tru
 
 - **matterbridge/deviceid/state/root**
 
-only the current attributes shall be published here
+Publish here only the current attribute values.
 
 ```typescript
 const state = { OnOff: { onOff: false }, LevelControl: { currentLevel: 254 } };
 publish('matterbridge/deviceid/state/root', JSON.stringify(state), { retain: true, qos: 2 });
 ```
 
-## Subscribe
+### subscribe
 
-Each device shall subscribe:
+- **matterbridge/deviceid/subscribe/root**
 
-### command
-
-- **matterbridge/deviceid/command/root**
-
-It will receive all Matter commands.
+Publish here only the attribute changes that the device wants to receive from the controller.
 
 ```typescript
-Topic: 'matterbridge/deviceid/command/root'
-Payload: "{"cluster":"OnOff","command":"on","request": MatterRequest | undefined }"
+const subscribe = { OnOff: ['onOff'], LevelControl: ['currentLevel'] };
+publish('matterbridge/deviceid/state/root', JSON.stringify(subscribe), { retain: true, qos: 2 });
+```
+
+## Subscribe
+
+Each device may subscribe to `write` messages:
+
+```typescript
+subscribe('matterbridge/deviceid/write/root', { qos: 2 });
+```
+
+and will receive all attributes changes it subscribed to.
+
+```typescript
+{ OnOff: { onOff: false }, LevelControl: { currentLevel: 254 } }
 ```
 
 ---
 
+# Repository setup
+
+> **Note:** This repository uses an experimental new toolchain. It drops the traditional ESLint / Prettier / TypeScript / Jest stack in favor of a faster, lighter setup.
+
+- **No ESLint, no Prettier** — replaced by the [oxc](https://oxc.rs) stack ([oxlint](https://oxc.rs/docs/guide/usage/linter.html) for linting and [oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) for formatting).
+- **No `typescript` package** — replaced by [tsgo](https://github.com/microsoft/typescript-go) (`@typescript/native-preview`). The `typescript` package is kept only as a publish-time dependency while tsgo is still in preview.
+- **No Jest** — replaced by [Vitest](https://vitest.dev), which natively supports ESM without extra configuration.
+- **Far fewer dependencies** — the installed package count drops from 600+ to around 200.
+- **Much faster lint and format** — oxlint and oxfmt run in a fraction of the time of the ESLint / Prettier pipeline.
+- **Much faster build** — tsgo compiles the project in a fraction of the time of the standard `tsc` build.
+- **Editor support** — use the VS Code extensions for tsgo and oxc to get the same experience inside the editor.
+
 # Todo
 
-- [x] Add white and black list
-- [x] Attributes handler in config
-- [ ] Matter command handler
-- [ ] Matter Subscribe handler
 - [ ] Add composed device types

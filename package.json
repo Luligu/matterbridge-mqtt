@@ -1,6 +1,6 @@
 {
   "name": "matterbridge-mqtt",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Matterbridge mqtt plugin",
   "author": "https://github.com/Luligu",
   "license": "Apache-2.0",
@@ -97,10 +97,10 @@
     "deepClean": "npm run clean && npx shx rm -rf coverage jest temp package-lock.json npm-shrinkwrap.json .cache/* .cache/.[!.]* .cache/..?* node_modules/* node_modules/.[!.]* node_modules/..?*",
     "watch": "tsgo --build tsconfig.build.json --watch",
     "typecheck": "tsgo --build tsconfig.json --noEmit",
-    "test": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest",
-    "test:watch": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --watch",
-    "test:verbose": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --verbose",
-    "test:coverage": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --coverage",
+    "test": "vitest run",
+    "test:watch": "vitest --reporter verbose",
+    "test:verbose": "npm run test -- --reporter verbose",
+    "test:coverage": "npm run test -- --reporter verbose --coverage --coverage.thresholds.statements=100 --coverage.thresholds.branches=100 --coverage.thresholds.lines=100 --coverage.thresholds.functions=100",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt",
@@ -113,9 +113,9 @@
     "git:hardreset:edge": "git fetch origin && git checkout edge && git reset --hard origin/edge",
     "reset": "npm run deepClean && npm run softReset",
     "softReset": "npm install --no-fund --no-audit && npm prune --no-fund --no-audit && npm link --no-fund --no-audit matterbridge && npm run build && npm run typecheck",
-    "checkDependencies": "ncu",
-    "updateDependencies": "ncu -u && npm run reset",
-    "automator": "node scripts/run-automator.mjs --plugin --no-vitest --experimental",
+    "checkDependencies": "npm install --no-fund --no-audit --no-save npm-check-updates && ncu && npm run softReset",
+    "updateDependencies": "npm install --no-fund --no-audit --no-save npm-check-updates && ncu -u && npm run softReset",
+    "automator": "node scripts/run-automator.mjs --plugin --no-jest --experimental",
     "runMeBeforePublish": "npm run cleanBuild && npm run format && npm run lint && npm run build && npm run typecheck && npm run test:coverage",
     "prepublishOnly": "npm run clean && npx tsc --project tsconfig.build.production.json && npm pkg delete devDependencies scripts && npx shx rm -rf node_modules/* node_modules/.[!.]* node_modules/..?* package-lock.json npm-shrinkwrap.json && npm install  --no-fund --no-audit --omit=dev && npm shrinkwrap --omit=dev",
     "npmPack": "npx shx cp package.json package.json.backup && node scripts/version.mjs dev && npm run prepublishOnly && npm pack && npx shx cp package.json.backup package.json && npx shx rm -f package.json.backup && npm run reset",
@@ -135,17 +135,14 @@
     "node-persist-manager": "2.0.2"
   },
   "devDependencies": {
-    "@jest/globals": "30.4.1",
-    "@types/jest": "30.0.0",
     "@types/node": "25.9.2",
-    "@typescript/native-preview": "7.0.0-dev.20260609.1",
-    "cross-env": "10.1.0",
-    "jest": "30.4.2",
-    "npm-check-updates": "22.2.3",
+    "@typescript/native-preview": "7.0.0-dev.20260610.1",
+    "@vitest/coverage-istanbul": "4.1.8",
     "oxfmt": "0.54.0",
     "oxlint": "1.69.0",
     "oxlint-tsgolint": "0.23.0",
     "shx": "0.4.0",
-    "ts-jest": "29.4.11"
+    "typescript": "6.0.3",
+    "vitest": "4.1.8"
   }
 }

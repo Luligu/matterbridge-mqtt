@@ -92,8 +92,8 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
     super(matterbridge, log, config);
 
     // Verify that Matterbridge is the correct version
-    if (typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.8.1')) {
-      throw new Error(`This plugin requires Matterbridge version >= "3.8.1". Please update Matterbridge to the latest version in the frontend.`);
+    if (typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.9.0')) {
+      throw new Error(`This plugin requires Matterbridge version >= "3.9.0". Please update Matterbridge to the latest version in the frontend.`);
     }
 
     this.log.info(`Initializing platform: ${this.config.name}`);
@@ -199,18 +199,25 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         return;
       }
       const { deviceId, subTopic, endpointName } = parsed;
+      if (!['config', 'state', 'subscribe', 'write'].includes(subTopic)) {
+        this.log.warn(`Received MQTT message with unrecognized subTopic ${warn.magenta.bold`${subTopic}`} on topic ${warn.success.bold`${topic}`}. Ignoring.`);
+        return;
+      }
+      /** Destroy device */
       if (subTopic === 'config' && payload === '') {
         this.log.debug(`MQTT ${packet.retain ? 'retained ' : ''}message on '${topic}': empty payload`);
         this.log.info(`Received empty payload on config topic '${topic}', treating as device deletion request.`);
         this.destroyDevice(deviceId);
         return;
       }
-      if (subTopic === 'state' && payload === '') {
+      if (['state', 'subscribe', 'write'].includes(subTopic) && payload === '') {
         this.log.debug(`MQTT ${packet.retain ? 'retained ' : ''}message on '${topic}': empty payload`);
         return;
       }
+      /** Create device */
       const message = JSON.parse(payload);
       this.log.debug(`MQTT ${packet.retain ? 'retained ' : ''}message on '${topic}': ${debugStringify(message)}`);
+      // istanbul ignore else cause is already checked above
       if (subTopic === 'config') {
         this.log.info(
           `Received ${info.bgMagenta.black.bold` config `} message for device ${info.bgCyan.black.bold` ${deviceId} `} endpoint ${info.bgGreen.black.bold` ${endpointName} `}`,
@@ -239,8 +246,50 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         this.state.set(topic, payload);
         // istanbul ignore else
         if (this.isConfigured) fireAndForget(this.updateHandler(topic, payload), this.log, `Failed to handle state update for device ${deviceId} on endpoint ${endpointName}`);
-      } else {
-        this.log.warn(`Received MQTT message with unrecognized subTopic ${warn.magenta.bold`${subTopic}`} on topic ${warn.success.bold`${topic}`}. Ignoring.`);
+      } else if (subTopic === 'subscribe') {
+        this.log.info(
+          `Received ${info.bgMagenta.black.bold` subscribe `} message for device ${info.bgCyan.black.bold` ${deviceId} `} endpoint ${info.bgGreen.black.bold` ${endpointName} `}`,
+        );
+        if (typeof message !== 'object' || message === null || Array.isArray(message)) {
+          this.log.warn(`Received MQTT message on topic '${topic}' with invalid format: subscribe is missing or not an object. Ignoring.`);
+          return;
+        }
+        for (const clusterName of Object.keys(message)) {
+          if (!this.getDeviceById(deviceId)?.hasClusterServer(clusterName)) {
+            this.log.warn(
+              `Cannot subscribe to cluster '${clusterName}' for device '${deviceId}' because the device does not have that cluster defined. Skipping subscribe configuration for this cluster.`,
+            );
+            continue;
+          }
+          const attributes = message[clusterName];
+          if (typeof attributes !== 'object' || attributes === null || !Array.isArray(attributes)) {
+            this.log.warn(
+              `Received MQTT message on topic '${topic}' with invalid format: attributes for cluster '${clusterName}' in subscribe are not an array. Ignoring subscribe configuration for this cluster.`,
+            );
+            continue;
+          }
+          for (const attributeName of attributes) {
+            if (!this.getDeviceById(deviceId)?.hasAttributeServer(clusterName, attributeName)) {
+              this.log.warn(
+                `Cannot subscribe to cluster '${clusterName}:${attributeName}' for device '${deviceId}' because the device does not have that attribute defined. Skipping subscribe configuration for this cluster.`,
+              );
+              continue;
+            }
+            this.getDeviceById(deviceId)?.subscribeAttribute(clusterName, attributeName, (value) => {
+              this.log.debug(`Received update for subscribed attribute '${clusterName}:${attributeName}' on device '${deviceId}': ${debugStringify(value)}`);
+              const subscribeTopic = `${this.config.topic}/${deviceId}/write/${endpointName}`;
+              const payload = JSON.stringify({ [clusterName]: { [attributeName]: value } });
+              fireAndForget(
+                this.mqtt.publish(subscribeTopic, payload, { retain: false }),
+                this.log,
+                `Failed to publish MQTT message for subscribed attribute update on '${subscribeTopic}' with payload ${payload}`,
+              );
+            });
+          }
+        }
+      } else if (subTopic === 'write') {
+        // 'write' subTopic is used for attribute updates Matter controller >>> Matterbridge >>> MQTT >>> device
+        return;
       }
     } catch (error) {
       inspectError(this.log, `Failed to parse MQTT message on '${topic}' with payload ${payload.replaceAll('\n', '')}`, error);
@@ -284,7 +333,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       id: deviceId,
     });
 
-    /** Bridged Device Basic Information Cluster */
+    /** Bridged Device Basic Information Cluster - BridgedDeviceBasicInformationServer */
     device.createDefaultBridgedDeviceBasicInformationClusterServer(
       deviceName,
       serialNumber,
@@ -296,9 +345,11 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       bridgedDeviceBasicInformationCluster.hardwareVersion,
       bridgedDeviceBasicInformationCluster.hardwareVersionString,
     );
-    this.log.debug(`Created Bridged Device Basic Information Cluster for device ${deviceId} with attributes: ${debugStringify(bridgedDeviceBasicInformationCluster)}`);
+    this.log.debug(
+      `Created Bridged Device Basic Information Cluster for device ${deviceId} with attributes: ${debugStringify({ ...bridgedDeviceBasicInformationCluster, nodeLabel: deviceName, serialNumber: serialNumber })}`,
+    );
 
-    /** Power Source Cluster */
+    /** Power Source Cluster - MatterbridgePowerSourceServer */
     if (jsonPayload.deviceTypes.includes('PowerSource')) {
       const powerSourceCluster: Partial<PowerSource.Attributes> = jsonPayload.clusters.PowerSource || {};
       if (powerSourceCluster.batReplacementDescription !== undefined || powerSourceCluster.batQuantity !== undefined) {
@@ -368,6 +419,10 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       this.log.warn(`Cannot destroy device with ID '${deviceId}' because it is not registered.`);
       return;
     }
+    /**
+     * This will run in the background and we don't want to await it here since we want to be able to process multiple MQTT messages in quick succession without waiting
+     * for each device unregistration to complete, and any errors will be caught and logged by the fireAndForget utility
+     */
     fireAndForget(this.unregisterDevice(device), this.log, `Failed to unregister device ${deviceId}`);
   }
 

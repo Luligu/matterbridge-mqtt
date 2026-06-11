@@ -1,5 +1,3 @@
-// oxlint-disable no-console unicorn/no-process-exit
-/* istanbul ignore file */
 /**
  * Stand-alone MQTT publish test for matterbridge-mqtt.
  *
@@ -31,12 +29,16 @@
  * limitations under the License.
  */
 
+/* istanbul ignore file */
+
+// oxlint-disable no-console unicorn/no-process-exit
+
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
 import { AirQuality, PowerSource, SmokeCoAlarm, ValveConfigurationAndControl } from 'matterbridge/matter/clusters';
-import { hasParameter } from 'matterbridge/utils';
+import { getParameter, hasParameter } from 'matterbridge/utils';
 import { connectAsync } from 'mqtt';
 import type { IClientOptions, IClientPublishOptions } from 'mqtt';
 
@@ -69,6 +71,7 @@ interface DeviceEntry {
   deviceTypes: string[];
   configClusters: Record<string, unknown>;
   state: Record<string, unknown>;
+  subscribe?: Record<string, string[]>;
 }
 
 const DEVICES: DeviceEntry[] = [
@@ -95,6 +98,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['OnOffLight', 'PowerSource'],
     configClusters: { PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { OnOff: { onOff: false } },
+    subscribe: { OnOff: ['onOff'] },
   },
   {
     id: 'test-dimmable-light',
@@ -102,6 +106,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['DimmableLight', 'PowerSource'],
     configClusters: { LevelControl: { onLevel: 128 }, PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { OnOff: { onOff: true }, LevelControl: { currentLevel: 128 } },
+    subscribe: { OnOff: ['onOff'], LevelControl: ['currentLevel'] },
   },
   {
     id: 'test-color-temp-light',
@@ -109,6 +114,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['ColorTemperatureLight', 'PowerSource'],
     configClusters: { PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { OnOff: { onOff: true }, LevelControl: { currentLevel: 200 }, ColorControl: { colorTemperatureMireds: 370 } },
+    subscribe: { OnOff: ['onOff'], LevelControl: ['currentLevel'], ColorControl: ['colorTemperatureMireds'] },
   },
   {
     id: 'test-extended-color-light',
@@ -116,6 +122,11 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['ExtendedColorLight', 'PowerSource'],
     configClusters: { PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { OnOff: { onOff: true }, LevelControl: { currentLevel: 200 }, ColorControl: { currentHue: 128, currentSaturation: 200 } },
+    subscribe: {
+      OnOff: ['onOff'],
+      LevelControl: ['currentLevel'],
+      ColorControl: ['colorMode', 'colorTemperatureMireds', 'currentHue', 'currentSaturation', 'currentX', 'currentY'],
+    },
   },
 
   // Chapter 5. Smart Plugs/Outlets and other Actuators Device Types
@@ -281,14 +292,18 @@ console.log(`Connected. Publishing to base topic "${baseTopic}".\n`);
 // --------------------------------------------------------------------------
 
 const pubOptions: IClientPublishOptions = { retain: true, qos: 2 };
+const filter = getParameter('filter');
+if (filter) console.log(`Filtering devices with name containing "${filter}"...\n`);
 
 for (const device of DEVICES) {
+  if (filter && !device.name.includes(filter)) continue;
   const configPayload = JSON.stringify({
     deviceTypes: device.deviceTypes,
     clusters: {
       BridgedDeviceBasicInformation: {
         nodeLabel: device.name,
-        serialNumber: `TEST-${device.id}`,
+        serialNumber: device.id,
+        productName: 'Matterbridge MQTT Test Device',
       },
       ...device.configClusters,
     },
@@ -297,17 +312,22 @@ for (const device of DEVICES) {
 
   const configTopic = `${baseTopic}/${device.id}/config/root`;
   const stateTopic = `${baseTopic}/${device.id}/state/root`;
+  const subscribeTopic = `${baseTopic}/${device.id}/subscribe/root`;
 
   await client.publishAsync(configTopic, hasParameter('delete') ? '' : configPayload, pubOptions);
   await client.publishAsync(stateTopic, hasParameter('delete') ? '' : statePayload, pubOptions);
+  if (device.subscribe) {
+    const subscribePayload = JSON.stringify(device.subscribe);
+    await client.publishAsync(subscribeTopic, hasParameter('delete') ? '' : subscribePayload, pubOptions);
+  }
 
   console.log(`${hasParameter('delete') ? 'Deleted' : 'Published'} [${device.name}]`);
   console.log(`  config → ${configTopic}`);
   console.log(`  state  → ${stateTopic}`);
+  if (device.subscribe) {
+    console.log(`  subscribe → ${subscribeTopic}`);
+  }
 }
 
-// await client.publishAsync('matterbridge/test-onoff-light/config/root', '', { retain: true, qos: 2 });
-// await client.publishAsync('matterbridge/test-onoff-light/state/root', '', { retain: true, qos: 2 });
-
 await client.endAsync();
-console.log(`\nDone. Published config + state for ${DEVICES.length} device(s).`);
+console.log(`\nDone. Published config + state + subscribe for ${DEVICES.length} device(s).`);
