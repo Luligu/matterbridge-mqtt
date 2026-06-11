@@ -32,6 +32,7 @@ The **matterbridge-mqtt** plugin bridges any MQTT-capable device into the Matter
 - **Zero-code device onboarding** — send a single retained `config` message and Matterbridge automatically creates and registers the corresponding Matter endpoint.
 - **Broad device-type support** — lights (on/off, dimmable, colour-temperature, extended colour), plugs and outlets, mounted switches, sensors (contact, temperature, humidity, pressure, flow, light, occupancy, smoke/CO, air quality, rain, soil, water freeze/leak), pump, water valve, power source, and electrical sensor.
 - **Live state sync** — retained `state` messages drive cluster attribute updates so controllers always see the current device state, even after a restart.
+- **Selective attribute subscription** — a retained `subscribe` message lets each device declare exactly which cluster attributes it wants pushed back to its `write` topic.
 - **Matter state forwarding** — every Matter attribute change (e.g. `onOff`, `currentLevel`) is published back to the device's `write` topic as a structured JSON payload.
 - **Flexible MQTT connectivity** — configurable broker host, port, protocol version (3/4/5), credentials, client ID, and full TLS support (CA certificate, client certificate/key, `rejectUnauthorized`).
 - **Topic-based multi-device management** — a single broker connection and a single base topic handle an arbitrary number of devices; each device is identified by its `deviceId` path segment.
