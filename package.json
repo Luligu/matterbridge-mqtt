@@ -1,6 +1,6 @@
 {
   "name": "matterbridge-mqtt",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Matterbridge mqtt plugin",
   "author": "https://github.com/Luligu",
   "license": "Apache-2.0",
@@ -91,10 +91,10 @@
     "_npmPublish": "mb-run --publish local",
     "build": "tsgo --build tsconfig.build.json",
     "buildProduction": "tsgo --build tsconfig.build.production.json",
-    "clean": "npx shx rm -rf *.tsbuildinfo dist",
+    "clean": "npm install --no-fund --no-audit --no-save npm-check-updates && npx shx rm -rf *.tsbuildinfo dist",
     "cleanBuild": "npm run clean && npm run build",
     "cleanBuildProduction": "npm run clean && npm run buildProduction",
-    "deepClean": "npm run clean && npx shx rm -rf coverage jest temp package-lock.json npm-shrinkwrap.json .cache/* .cache/.[!.]* .cache/..?* node_modules/* node_modules/.[!.]* node_modules/..?*",
+    "deepClean": "npm install --no-fund --no-audit --no-save npm-check-updates && npm run clean && npx shx rm -rf coverage jest temp package-lock.json npm-shrinkwrap.json .cache/* .cache/.[!.]* .cache/..?* node_modules/* node_modules/.[!.]* node_modules/..?*",
     "watch": "tsgo --build tsconfig.build.json --watch",
     "typecheck": "tsgo --build tsconfig.json --noEmit",
     "test": "vitest run",
@@ -141,7 +141,6 @@
     "oxfmt": "0.54.0",
     "oxlint": "1.69.0",
     "oxlint-tsgolint": "0.23.0",
-    "shx": "0.4.0",
     "typescript": "6.0.3",
     "vitest": "4.1.8"
   }

@@ -2,13 +2,18 @@
  * Stand-alone MQTT publish test for matterbridge-mqtt.
  *
  * Reads ~/.matterbridge/matterbridge-mqtt.config.json, connects to the
- * configured MQTT broker, and publishes retained config and state messages
+ * configured MQTT broker, and publishes retained config state subscribe messages
  * for every supported device type.
  *
  * Run after building:
- *   node dist/publishTest.js
+ *   node dist/test-publish.js
  *
- * @file publishTest.ts
+ * Parameters:
+ *   --filter <name>   Only publish devices whose name contains <name>.
+ *   --update          Publish a changed state to the state topic of each device (state change only).
+ *   --delete          Publish empty retained payloads to clear the topics instead of publishing config/state/subscribe.
+ *
+ * @file test-publish.ts
  * @author Luca Liguori
  * @created 2026-06-08
  * @version 1.0.0
@@ -29,7 +34,7 @@
  * limitations under the License.
  */
 
-/* istanbul ignore file */
+/* istanbul ignore file cause is just a test script */
 
 // oxlint-disable no-console unicorn/no-process-exit
 
@@ -71,6 +76,7 @@ interface DeviceEntry {
   deviceTypes: string[];
   configClusters: Record<string, unknown>;
   state: Record<string, unknown>;
+  update?: Record<string, unknown>;
   subscribe?: Record<string, string[]>;
 }
 
@@ -82,6 +88,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['PowerSource'],
     configClusters: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 200, batVoltage: 3000 } },
     state: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Warning, batPercentRemaining: 150, batVoltage: 2800 } },
+    update: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Critical, batPercentRemaining: 50, batVoltage: 2600 } },
   },
   {
     id: 'test-electrical-sensor',
@@ -89,6 +96,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['ElectricalSensor'],
     configClusters: {},
     state: { ElectricalPowerMeasurement: { activePower: 1200, voltage: 2300, activeCurrent: 520 } },
+    update: { ElectricalPowerMeasurement: { activePower: 800, voltage: 2310, activeCurrent: 350 } },
   },
 
   // Chapter 4. Lighting Device Types
@@ -98,6 +106,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['OnOffLight', 'PowerSource'],
     configClusters: { PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { OnOff: { onOff: false } },
+    update: { OnOff: { onOff: true } },
     subscribe: { OnOff: ['onOff'] },
   },
   {
@@ -106,6 +115,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['DimmableLight', 'PowerSource'],
     configClusters: { LevelControl: { onLevel: 128 }, PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { OnOff: { onOff: true }, LevelControl: { currentLevel: 128 } },
+    update: { OnOff: { onOff: true }, LevelControl: { currentLevel: 64 } },
     subscribe: { OnOff: ['onOff'], LevelControl: ['currentLevel'] },
   },
   {
@@ -114,6 +124,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['ColorTemperatureLight', 'PowerSource'],
     configClusters: { PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { OnOff: { onOff: true }, LevelControl: { currentLevel: 200 }, ColorControl: { colorTemperatureMireds: 370 } },
+    update: { OnOff: { onOff: true }, LevelControl: { currentLevel: 250 }, ColorControl: { colorTemperatureMireds: 250 } },
     subscribe: { OnOff: ['onOff'], LevelControl: ['currentLevel'], ColorControl: ['colorTemperatureMireds'] },
   },
   {
@@ -122,6 +133,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['ExtendedColorLight', 'PowerSource'],
     configClusters: { PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { OnOff: { onOff: true }, LevelControl: { currentLevel: 200 }, ColorControl: { currentHue: 128, currentSaturation: 200 } },
+    update: { OnOff: { onOff: true }, LevelControl: { currentLevel: 100 }, ColorControl: { currentHue: 64, currentSaturation: 254 } },
     subscribe: {
       OnOff: ['onOff'],
       LevelControl: ['currentLevel'],
@@ -136,6 +148,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['OnOffPlugInUnit', 'PowerSource'],
     configClusters: { PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { OnOff: { onOff: false } },
+    update: { OnOff: { onOff: true } },
   },
   {
     id: 'test-dimmable-plugin-unit',
@@ -143,6 +156,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['DimmablePlugInUnit', 'PowerSource'],
     configClusters: { PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { OnOff: { onOff: true }, LevelControl: { currentLevel: 200 } },
+    update: { OnOff: { onOff: true }, LevelControl: { currentLevel: 100 } },
   },
   {
     id: 'test-mounted-onoff-control',
@@ -150,6 +164,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['MountedOnOffControl', 'PowerSource'],
     configClusters: { PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { OnOff: { onOff: false } },
+    update: { OnOff: { onOff: true } },
   },
   {
     id: 'test-mounted-dimmable-control',
@@ -157,6 +172,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['MountedDimmableLoadControl', 'PowerSource'],
     configClusters: { PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { OnOff: { onOff: false }, LevelControl: { currentLevel: 100 } },
+    update: { OnOff: { onOff: true }, LevelControl: { currentLevel: 200 } },
   },
   {
     id: 'test-pump',
@@ -164,6 +180,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['Pump', 'PowerSource'],
     configClusters: { PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { OnOff: { onOff: false }, PumpConfigurationAndControl: { effectiveOperationMode: 0, effectiveControlMode: 0 } },
+    update: { OnOff: { onOff: true }, PumpConfigurationAndControl: { effectiveOperationMode: 0, effectiveControlMode: 0 } },
   },
   {
     id: 'test-water-valve',
@@ -171,6 +188,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['WaterValve', 'PowerSource'],
     configClusters: { PowerSource: { wiredCurrentType: PowerSource.WiredCurrentType.Ac } },
     state: { ValveConfigurationAndControl: { currentState: ValveConfigurationAndControl.ValveState.Closed, targetState: ValveConfigurationAndControl.ValveState.Closed } },
+    update: { ValveConfigurationAndControl: { currentState: ValveConfigurationAndControl.ValveState.Open, targetState: ValveConfigurationAndControl.ValveState.Open } },
   },
 
   // Chapter 7. Sensor Device Types
@@ -180,6 +198,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['ContactSensor', 'PowerSource'],
     configClusters: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 200 } },
     state: { BooleanState: { stateValue: false } },
+    update: { BooleanState: { stateValue: true } },
   },
   {
     id: 'test-light-sensor',
@@ -187,6 +206,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['LightSensor', 'PowerSource'],
     configClusters: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 200 } },
     state: { IlluminanceMeasurement: { measuredValue: 10000 } },
+    update: { IlluminanceMeasurement: { measuredValue: 5000 } },
   },
   {
     id: 'test-occupancy-sensor',
@@ -194,6 +214,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['OccupancySensor', 'PowerSource'],
     configClusters: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 200 } },
     state: { OccupancySensing: { occupancy: { occupied: false } } },
+    update: { OccupancySensing: { occupancy: { occupied: true } } },
   },
   {
     id: 'test-temperature-sensor',
@@ -201,6 +222,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['TemperatureSensor', 'PowerSource'],
     configClusters: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 180 } },
     state: { TemperatureMeasurement: { measuredValue: 2100 } },
+    update: { TemperatureMeasurement: { measuredValue: 2500 } },
   },
   {
     id: 'test-pressure-sensor',
@@ -208,6 +230,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['PressureSensor', 'PowerSource'],
     configClusters: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 160 } },
     state: { PressureMeasurement: { measuredValue: 1013 } },
+    update: { PressureMeasurement: { measuredValue: 1020 } },
   },
   {
     id: 'test-flow-sensor',
@@ -215,6 +238,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['FlowSensor', 'PowerSource'],
     configClusters: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 140 } },
     state: { FlowMeasurement: { measuredValue: 100 } },
+    update: { FlowMeasurement: { measuredValue: 150 } },
   },
   {
     id: 'test-humidity-sensor',
@@ -222,6 +246,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['HumiditySensor', 'PowerSource'],
     configClusters: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 130 } },
     state: { RelativeHumidityMeasurement: { measuredValue: 5500 } },
+    update: { RelativeHumidityMeasurement: { measuredValue: 6000 } },
   },
   {
     id: 'test-smoke-co-alarm',
@@ -229,6 +254,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['SmokeCOAlarm', 'PowerSource'],
     configClusters: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 200 } },
     state: { SmokeCoAlarm: { smokeState: SmokeCoAlarm.AlarmState.Normal, coState: SmokeCoAlarm.AlarmState.Normal } },
+    update: { SmokeCoAlarm: { smokeState: SmokeCoAlarm.AlarmState.Critical, coState: SmokeCoAlarm.AlarmState.Normal } },
   },
   {
     id: 'test-air-quality-sensor',
@@ -236,6 +262,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['AirQualitySensor', 'PowerSource'],
     configClusters: { PowerSource: { batChargeState: PowerSource.BatChargeState.IsNotCharging, batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 200 } },
     state: { AirQuality: { airQuality: AirQuality.AirQualityEnum.Good } },
+    update: { AirQuality: { airQuality: AirQuality.AirQualityEnum.Poor } },
   },
   {
     id: 'test-water-freeze-detector',
@@ -243,6 +270,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['WaterFreezeDetector', 'PowerSource'],
     configClusters: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 170 } },
     state: { BooleanState: { stateValue: false } },
+    update: { BooleanState: { stateValue: true } },
   },
   {
     id: 'test-water-leak-detector',
@@ -250,6 +278,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['WaterLeakDetector', 'PowerSource'],
     configClusters: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 150 } },
     state: { BooleanState: { stateValue: false } },
+    update: { BooleanState: { stateValue: true } },
   },
   {
     id: 'test-rain-sensor',
@@ -257,6 +286,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['RainSensor', 'PowerSource'],
     configClusters: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 160 } },
     state: { BooleanState: { stateValue: false } },
+    update: { BooleanState: { stateValue: true } },
   },
   {
     id: 'test-soil-sensor',
@@ -264,6 +294,7 @@ const DEVICES: DeviceEntry[] = [
     deviceTypes: ['SoilSensor', 'PowerSource'],
     configClusters: { PowerSource: { batChargeLevel: PowerSource.BatChargeLevel.Ok, batPercentRemaining: 140 } },
     state: { SoilMeasurement: { soilMoistureMeasuredValue: 60 } },
+    update: { SoilMeasurement: { soilMoistureMeasuredValue: 40 } },
   },
 ];
 
@@ -294,6 +325,19 @@ console.log(`Connected. Publishing to base topic "${baseTopic}".\n`);
 const pubOptions: IClientPublishOptions = { retain: true, qos: 2 };
 const filter = getParameter('filter');
 if (filter) console.log(`Filtering devices with name containing "${filter}"...\n`);
+
+if (hasParameter('update')) {
+  for (const device of DEVICES) {
+    if (filter && !device.name.includes(filter)) continue;
+    const stateTopic = `${baseTopic}/${device.id}/state/root`;
+    await client.publishAsync(stateTopic, JSON.stringify(device.update ?? device.state), pubOptions);
+    console.log(`Updated [${device.name}]`);
+    console.log(`  state → ${stateTopic}`);
+  }
+  await client.endAsync();
+  console.log(`\nDone. Published state change for ${DEVICES.length} device(s).`);
+  process.exit(0);
+}
 
 for (const device of DEVICES) {
   if (filter && !device.name.includes(filter)) continue;
