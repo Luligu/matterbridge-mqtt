@@ -135,8 +135,8 @@
     "node-persist-manager": "2.0.2"
   },
   "devDependencies": {
-    "@types/node": "25.9.2",
-    "@typescript/native-preview": "7.0.0-dev.20260610.1",
+    "@types/node": "25.9.3",
+    "@typescript/native-preview": "7.0.0-dev.20260611.2",
     "@vitest/coverage-istanbul": "4.1.8",
     "oxfmt": "0.54.0",
     "oxlint": "1.69.0",

@@ -10,10 +10,14 @@ If you like this project and find it useful, please consider giving it a star on
 
 ## [0.0.7] - Dev branch
 
+### Added
+
+- Refactor `test-publish` to allow also state update.
+
 ### Changed
 
 - Bump `@types/node` to v.25.9.3.
-- Refactor `test-publish` to allow also state update.
+- Bump `@typescript/native-preview` to v.7.0.0-dev.20260611.2.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
