@@ -92,8 +92,8 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
     super(matterbridge, log, config);
 
     // Verify that Matterbridge is the correct version
-    if (typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.8.1')) {
-      throw new Error(`This plugin requires Matterbridge version >= "3.8.1". Please update Matterbridge to the latest version in the frontend.`);
+    if (typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.9.0')) {
+      throw new Error(`This plugin requires Matterbridge version >= "3.9.0". Please update Matterbridge to the latest version in the frontend.`);
     }
 
     this.log.info(`Initializing platform: ${this.config.name}`);
@@ -419,6 +419,10 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       this.log.warn(`Cannot destroy device with ID '${deviceId}' because it is not registered.`);
       return;
     }
+    /**
+     * This will run in the background and we don't want to await it here since we want to be able to process multiple MQTT messages in quick succession without waiting
+     * for each device unregistration to complete, and any errors will be caught and logged by the fireAndForget utility
+     */
     fireAndForget(this.unregisterDevice(device), this.log, `Failed to unregister device ${deviceId}`);
   }
 

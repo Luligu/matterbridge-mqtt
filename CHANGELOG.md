@@ -12,7 +12,7 @@ If you like this project and find it useful, please consider giving it a star on
 
 ### Added
 
-- Add **matterbridge/deviceid/subscribe/root**.
+- Add subscribe topic **matterbridge/deviceid/subscribe/root**.
 - Remove Jest and add Vitest.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
@@ -21,7 +21,7 @@ If you like this project and find it useful, please consider giving it a star on
 
 ### Added
 
-- Require Matterbridge 3.8.1.
+- Require Matterbridge 3.9.0.
 - Add handler to create all device types.
 - Add MQTT packet metadata forwarding to message handlers.
 - Add retained MQTT message logging.
