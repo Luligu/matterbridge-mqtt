@@ -170,7 +170,7 @@ Parameters:
 - **No ESLint, no Prettier** — replaced by the [oxc](https://oxc.rs) stack ([oxlint](https://oxc.rs/docs/guide/usage/linter.html) for linting and [oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) for formatting).
 - **No `typescript` package** — replaced by [tsgo](https://github.com/microsoft/typescript-go) (`@typescript/native-preview`). The `typescript` package is kept only as a publish-time dependency while tsgo is still in preview.
 - **No Jest** — replaced by [Vitest](https://vitest.dev), which natively supports ESM without extra configuration.
-- **Far fewer dependencies** — the installed package count (development dependencies) drops from 600+ to around 150+.
+- **Far fewer dev dependencies** — the number of installed package (development dependencies) drops from 600+ to around 100+.
 - **Much faster lint and format** — oxlint and oxfmt run in a fraction of the time of the ESLint / Prettier pipeline.
 - **Much faster build** — tsgo compiles the project in a fraction of the time of the standard `tsc` build.
 - **Editor support** — use the VS Code extensions for tsgo and oxc to get the same experience inside the editor.
