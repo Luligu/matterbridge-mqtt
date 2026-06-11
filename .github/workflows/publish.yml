@@ -66,6 +66,31 @@ jobs:
       - name: Link matterbridge in the project
         run: npm link matterbridge --no-fund --no-audit
 
+      - name: Check frontend
+        id: check_frontend
+        shell: bash
+        run: echo "has_frontend=$(test -d apps/frontend && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Install frontend dependencies
+        if: steps.check_frontend.outputs.has_frontend == 'true'
+        working-directory: apps/frontend
+        run: npm ci --no-fund --no-audit
+
+      - name: Build the frontend
+        if: steps.check_frontend.outputs.has_frontend == 'true'
+        working-directory: apps/frontend
+        run: npm run build
+
+      - name: Lint the frontend
+        if: steps.check_frontend.outputs.has_frontend == 'true'
+        working-directory: apps/frontend
+        run: npm run lint
+
+      - name: Typecheck the frontend
+        if: steps.check_frontend.outputs.has_frontend == 'true'
+        working-directory: apps/frontend
+        run: npm run typecheck
+
       - name: Build the plugin (typescript)
         run: npx tsc --build tsconfig.build.json
 
@@ -181,6 +206,31 @@ jobs:
 
       - name: Link matterbridge in the plugin
         run: npm link matterbridge --no-fund --no-audit
+
+      - name: Check frontend
+        id: check_frontend
+        shell: bash
+        run: echo "has_frontend=$(test -d apps/frontend && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Install frontend dependencies
+        if: steps.check_frontend.outputs.has_frontend == 'true'
+        working-directory: apps/frontend
+        run: npm ci --no-fund --no-audit
+
+      - name: Build the frontend
+        if: steps.check_frontend.outputs.has_frontend == 'true'
+        working-directory: apps/frontend
+        run: npm run build
+
+      - name: Lint the frontend
+        if: steps.check_frontend.outputs.has_frontend == 'true'
+        working-directory: apps/frontend
+        run: npm run lint
+
+      - name: Typecheck the frontend
+        if: steps.check_frontend.outputs.has_frontend == 'true'
+        working-directory: apps/frontend
+        run: npm run typecheck
 
       - name: Build the plugin (typescript)
         run: npx tsc --build tsconfig.build.json
