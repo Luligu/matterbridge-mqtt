@@ -36,6 +36,7 @@ The **matterbridge-mqtt** plugin bridges any MQTT-capable device into the Matter
 - **Matter state forwarding** — every Matter attribute change (e.g. `onOff`, `currentLevel`) is published back to the device's `write` topic as a structured JSON payload.
 - **Flexible MQTT connectivity** — configurable broker host, port, protocol version (3/4/5), credentials, client ID, and full TLS support (CA certificate, client certificate/key, `rejectUnauthorized`).
 - **Topic-based multi-device management** — a single broker connection and a single base topic handle an arbitrary number of devices; each device is identified by its `deviceId` path segment.
+- **Frontend** — a plugin frontend showing the created devices and all MQTT data.
 
 ---
 

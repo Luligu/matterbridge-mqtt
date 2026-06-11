@@ -1,0 +1,52 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "ignorePatterns": ["**/build/**", "**/node_modules/**", "**/dist/**"],
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "options": {
+    "reportUnusedDisableDirectives": "warn",
+    "maxWarnings": 0
+  },
+  "plugins": ["react", "typescript", "unicorn", "import", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "restriction": "warn",
+    "perf": "warn",
+    "style": "off",
+    "pedantic": "off",
+    "nursery": "off"
+  },
+  "rules": {
+    "eslint/no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
+    ],
+    "eslint/no-console": "warn",
+    "eslint/no-undefined": "off",
+    "eslint/no-void": "off",
+    "oxc/no-async-await": "off",
+    "oxc/no-optional-chaining": "off",
+    "typescript/no-explicit-any": "warn",
+    "typescript/explicit-function-return-type": "off",
+    "typescript/explicit-module-boundary-types": "off",
+    "typescript/no-import-type-side-effects": "off",
+    "typescript/consistent-type-imports": ["error", { "prefer": "type-imports", "fixStyle": "inline-type-imports" }],
+    "import/no-default-export": "off",
+    "import/newline-after-import": "warn",
+    "import/first": "warn",
+    "import/no-duplicates": "warn",
+    "import/unambiguous": "off",
+    "react/react-in-jsx-scope": "off",
+    "react/jsx-filename-extension": "off",
+    "react/no-multi-comp": "off",
+    "react/no-array-index-key": "off"
+  }
+}

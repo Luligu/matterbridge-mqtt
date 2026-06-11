@@ -713,4 +713,125 @@ describe('MqttPlatform', () => {
       getDeviceByIdSpy.mockRestore();
     });
   });
+
+  describe('frontend API (onFetch)', () => {
+    beforeEach(() => {
+      platform.messages = [];
+      platform.outgoing = [];
+      platform.deviceData.clear();
+      platform.isConfigured = false;
+    });
+
+    it('should record incoming message fields newest first', () => {
+      handleMqttMessage(platform, `${config.topic}/dev1/write/root`, JSON.stringify({ a: 1 }));
+      const [msg] = platform.getApiMessages();
+      expect(msg).toMatchObject({
+        topic: `${config.topic}/dev1/write/root`,
+        deviceId: 'dev1',
+        subTopic: 'write',
+        endpointName: 'root',
+        payload: JSON.stringify({ a: 1 }),
+      });
+      expect(typeof msg.time).toBe('number');
+    });
+
+    it('should cap the message buffer at MAX_MESSAGES and drop the oldest', () => {
+      for (let i = 0; i <= MqttPlatform.MAX_MESSAGES; i += 1) {
+        handleMqttMessage(platform, `${config.topic}/cap-${i}/write/root`, JSON.stringify({ i }));
+      }
+      expect(platform.messages.length).toBe(MqttPlatform.MAX_MESSAGES);
+      const messages = platform.getApiMessages();
+      expect(messages).toHaveLength(MqttPlatform.MAX_MESSAGES);
+      expect(messages[0].topic).toBe(`${config.topic}/cap-${MqttPlatform.MAX_MESSAGES}/write/root`);
+      expect(messages.some((m) => m.topic === `${config.topic}/cap-0/write/root`)).toBe(false);
+    });
+
+    it('should retain config, state and subscribe payloads for a device', () => {
+      const createDeviceSpy = vi.spyOn(platform, 'createDevice').mockImplementation(() => {});
+      handleMqttMessage(
+        platform,
+        `${config.topic}/lamp/config/root`,
+        JSON.stringify({ deviceTypes: ['OnOffLight'], clusters: { BridgedDeviceBasicInformation: { nodeLabel: 'Lamp' } } }),
+      );
+      handleMqttMessage(platform, `${config.topic}/lamp/state/root`, JSON.stringify({ OnOff: { onOff: true } }));
+      handleMqttMessage(platform, `${config.topic}/lamp/subscribe/root`, JSON.stringify({}));
+      const devices = platform.getApiDevices();
+      expect(devices).toHaveLength(1);
+      expect(devices[0]).toMatchObject({ deviceId: 'lamp', name: 'Lamp' });
+      expect(devices[0].config?.payload).toMatchObject({ deviceTypes: ['OnOffLight'] });
+      expect(devices[0].state?.payload).toMatchObject({ OnOff: { onOff: true } });
+      expect(devices[0].subscribe?.payload).toEqual({});
+      createDeviceSpy.mockRestore();
+    });
+
+    it('should default the device name to the deviceId when no config has been seen', () => {
+      handleMqttMessage(platform, `${config.topic}/sensorX/state/root`, JSON.stringify({ OnOff: { onOff: false } }));
+      const devices = platform.getApiDevices();
+      expect(devices[0]).toMatchObject({ deviceId: 'sensorX', name: 'sensorX' });
+      expect(devices[0].config).toBeNull();
+      expect(devices[0].subscribe).toBeNull();
+    });
+
+    it('should sort devices by deviceId', () => {
+      handleMqttMessage(platform, `${config.topic}/zeta/state/root`, JSON.stringify({ OnOff: { onOff: true } }));
+      handleMqttMessage(platform, `${config.topic}/alpha/state/root`, JSON.stringify({ OnOff: { onOff: true } }));
+      expect(platform.getApiDevices().map((d) => d.deviceId)).toEqual(['alpha', 'zeta']);
+    });
+
+    it('should remove retained device data when a config payload is empty', () => {
+      const createDeviceSpy = vi.spyOn(platform, 'createDevice').mockImplementation(() => {});
+      const destroyDeviceSpy = vi.spyOn(platform, 'destroyDevice').mockImplementation(() => {});
+      handleMqttMessage(platform, `${config.topic}/temp/config/root`, JSON.stringify({ deviceTypes: ['OnOffLight'], clusters: {} }));
+      expect(platform.getApiDevices()).toHaveLength(1);
+      handleMqttMessage(platform, `${config.topic}/temp/config/root`, '');
+      expect(platform.getApiDevices()).toHaveLength(0);
+      expect(destroyDeviceSpy).toHaveBeenCalledWith('temp');
+      createDeviceSpy.mockRestore();
+      destroyDeviceSpy.mockRestore();
+    });
+
+    it('should serve devices and messages via onFetch and return undefined for unknown routes', async () => {
+      handleMqttMessage(platform, `${config.topic}/dev1/write/root`, JSON.stringify({ a: 1 }));
+      handleMqttMessage(platform, `${config.topic}/dev2/state/root`, JSON.stringify({ OnOff: { onOff: true } }));
+      await expect(platform.onFetch('GET', 'devices')).resolves.toEqual(platform.getApiDevices());
+      await expect(platform.onFetch('GET', 'messages')).resolves.toEqual(platform.getApiMessages());
+      await expect(platform.onFetch('GET', 'unknown')).resolves.toBeUndefined();
+      await expect(platform.onFetch('GET')).resolves.toBeUndefined();
+      await expect(platform.onFetch('POST', 'devices')).resolves.toBeUndefined();
+      expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/onFetch called/));
+    });
+
+    it('should record outgoing messages published on the write path', () => {
+      mqttService.emit('published', `${config.topic}/lamp/write/root`, JSON.stringify({ OnOff: { onOff: true } }));
+      const outgoing = platform.getApiOutgoing();
+      expect(outgoing).toHaveLength(1);
+      expect(outgoing[0]).toMatchObject({
+        topic: `${config.topic}/lamp/write/root`,
+        deviceId: 'lamp',
+        subTopic: 'write',
+        endpointName: 'root',
+        payload: JSON.stringify({ OnOff: { onOff: true } }),
+      });
+    });
+
+    it('should ignore outgoing publishes on a topic that does not match the expected format', () => {
+      mqttService.emit('published', 'invalid/topic', 'payload');
+      expect(platform.getApiOutgoing()).toHaveLength(0);
+    });
+
+    it('should cap the outgoing buffer at MAX_MESSAGES and drop the oldest', () => {
+      for (let i = 0; i <= MqttPlatform.MAX_MESSAGES; i += 1) {
+        mqttService.emit('published', `${config.topic}/out-${i}/write/root`, JSON.stringify({ i }));
+      }
+      expect(platform.outgoing.length).toBe(MqttPlatform.MAX_MESSAGES);
+      const outgoing = platform.getApiOutgoing();
+      expect(outgoing[0].topic).toBe(`${config.topic}/out-${MqttPlatform.MAX_MESSAGES}/write/root`);
+      expect(outgoing.some((m) => m.topic === `${config.topic}/out-0/write/root`)).toBe(false);
+    });
+
+    it('should serve outgoing messages via onFetch', async () => {
+      mqttService.emit('published', `${config.topic}/lamp/write/root`, JSON.stringify({ OnOff: { onOff: false } }));
+      await expect(platform.onFetch('GET', 'outgoing')).resolves.toEqual(platform.getApiOutgoing());
+    });
+  });
 });

@@ -13,6 +13,7 @@ If you like this project and find it useful, please consider giving it a star on
 ### Added
 
 - Refactor `test-publish` to allow also state update.
+- Add plugin frontend (it uses the new Matterbridge api).
 
 ### Changed
 

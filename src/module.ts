@@ -57,6 +57,40 @@ export interface MqttPlatformConfig extends PlatformConfig {
   blackList: string[];
 }
 
+// A retained MQTT payload for a device subTopic (config, state or subscribe).
+interface DeviceEntry {
+  time: number;
+  endpointName: string;
+  payload: unknown;
+}
+
+// The retained config, state and subscribe payloads for a single device.
+interface DeviceData {
+  name: string;
+  config?: DeviceEntry;
+  state?: DeviceEntry;
+  subscribe?: DeviceEntry;
+}
+
+// A device row returned to the frontend by the GET devices endpoint.
+export interface ApiDevice {
+  deviceId: string;
+  name: string;
+  config: DeviceEntry | null;
+  state: DeviceEntry | null;
+  subscribe: DeviceEntry | null;
+}
+
+// An incoming MQTT message returned to the frontend by the GET messages endpoint.
+export interface ApiMessage {
+  time: number;
+  topic: string;
+  deviceId: string;
+  subTopic: string;
+  endpointName: string;
+  payload: string;
+}
+
 /**
  * This is the standard interface for Matterbridge plugins.
  * Each plugin should export a default function that follows this signature.
@@ -75,6 +109,14 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
   private mqtt: MqttService;
   /** Maintains the state of each device: key = topic, value = payload */
   state: Map<string, string> = new Map();
+  /** Maximum number of retained incoming MQTT messages exposed to the frontend feed. */
+  static readonly MAX_MESSAGES = 100;
+  /** Ring buffer of the most recent incoming MQTT messages for the frontend feed. */
+  messages: ApiMessage[] = [];
+  /** Ring buffer of the most recent outgoing MQTT messages (write path) for the frontend feed. */
+  outgoing: ApiMessage[] = [];
+  /** Retained config, state and subscribe payloads per deviceId for the frontend devices table. */
+  deviceData: Map<string, DeviceData> = new Map();
 
   /**
    * Initializes the MQTT platform plugin.
@@ -121,6 +163,10 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
 
     this.mqtt.on('published', (topic: string, payload: string) => {
       this.log.info(`MQTT published to topic: ${topic} with payload: ${payload}`);
+      const parsed = this.mqttTopicParser(topic);
+      if (parsed) {
+        this.recordOutgoing({ time: Date.now(), topic, deviceId: parsed.deviceId, subTopic: parsed.subTopic, endpointName: parsed.endpointName, payload });
+      }
     });
 
     this.mqtt.on('close', () => {
@@ -203,10 +249,13 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         this.log.warn(`Received MQTT message with unrecognized subTopic ${warn.magenta.bold`${subTopic}`} on topic ${warn.success.bold`${topic}`}. Ignoring.`);
         return;
       }
+      // Record every recognized incoming message for the frontend feed
+      this.recordMessage({ time: Date.now(), topic, deviceId, subTopic, endpointName, payload });
       /** Destroy device */
       if (subTopic === 'config' && payload === '') {
         this.log.debug(`MQTT ${packet.retain ? 'retained ' : ''}message on '${topic}': empty payload`);
         this.log.info(`Received empty payload on config topic '${topic}', treating as device deletion request.`);
+        this.deviceData.delete(deviceId);
         this.destroyDevice(deviceId);
         return;
       }
@@ -234,6 +283,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
           this.log.warn(`Received MQTT message on topic '${topic}' with invalid format: 'clusters' field is missing or not an object. Ignoring.`);
           return;
         }
+        this.setDeviceEntry(deviceId, 'config', endpointName, message, message.clusters.BridgedDeviceBasicInformation?.nodeLabel ?? deviceId);
         this.createDevice(deviceId, endpointName, message);
       } else if (subTopic === 'state') {
         this.log.info(
@@ -243,6 +293,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
           this.log.warn(`Received MQTT message on topic '${topic}' with invalid format: state is missing or not an object. Ignoring.`);
           return;
         }
+        this.setDeviceEntry(deviceId, 'state', endpointName, message);
         this.state.set(topic, payload);
         // istanbul ignore else
         if (this.isConfigured) fireAndForget(this.updateHandler(topic, payload), this.log, `Failed to handle state update for device ${deviceId} on endpoint ${endpointName}`);
@@ -254,6 +305,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
           this.log.warn(`Received MQTT message on topic '${topic}' with invalid format: subscribe is missing or not an object. Ignoring.`);
           return;
         }
+        this.setDeviceEntry(deviceId, 'subscribe', endpointName, message);
         for (const clusterName of Object.keys(message)) {
           if (!this.getDeviceById(deviceId)?.hasClusterServer(clusterName)) {
             this.log.warn(
@@ -456,5 +508,97 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         await device.setCluster(cluster, parsedPayload[cluster], device.log);
       }
     }
+  }
+
+  /**
+   * Appends an incoming MQTT message to the bounded frontend feed buffer.
+   *
+   * @param {ApiMessage} message - The incoming MQTT message to record.
+   * @returns {void}
+   */
+  private recordMessage(message: ApiMessage): void {
+    this.messages.push(message);
+    if (this.messages.length > MqttPlatform.MAX_MESSAGES) this.messages.shift();
+  }
+
+  /**
+   * Appends an outgoing MQTT message (write path) to the bounded frontend feed buffer.
+   *
+   * @param {ApiMessage} message - The outgoing MQTT message to record.
+   * @returns {void}
+   */
+  private recordOutgoing(message: ApiMessage): void {
+    this.outgoing.push(message);
+    if (this.outgoing.length > MqttPlatform.MAX_MESSAGES) this.outgoing.shift();
+  }
+
+  /**
+   * Retains the latest config, state or subscribe payload for a device so the frontend can display it.
+   *
+   * @param {string} deviceId - The device identifier the payload belongs to.
+   * @param {'config' | 'state' | 'subscribe'} kind - The subTopic the payload was received on.
+   * @param {string} endpointName - The endpoint name the payload was received on.
+   * @param {unknown} payload - The parsed JSON payload to retain.
+   * @param {string} [name] - The device display name, when known (from the config payload).
+   * @returns {void}
+   */
+  private setDeviceEntry(deviceId: string, kind: 'config' | 'state' | 'subscribe', endpointName: string, payload: unknown, name?: string): void {
+    const data = this.deviceData.get(deviceId) ?? { name: deviceId };
+    if (name) data.name = name;
+    data[kind] = { time: Date.now(), endpointName, payload };
+    this.deviceData.set(deviceId, data);
+  }
+
+  /**
+   * Handles plugin frontend API requests from the Matterbridge frontend.
+   *
+   * Supported routes: `GET devices` (the retained device table), `GET messages` (the recent incoming MQTT feed) and `GET outgoing` (the recent outgoing/write MQTT feed), newest first.
+   *
+   * @param {string} method - The HTTP method.
+   * @param {string} [path] - The resource path segment.
+   * @returns {Promise<unknown>} The JSON-serializable response, or undefined for an unknown route (404).
+   */
+  // oxlint-disable-next-line typescript/require-await -- onFetch must be async to honor the MatterbridgePlatform override contract
+  override async onFetch(method: string, path?: string): Promise<unknown> {
+    this.log.debug(`onFetch called: method=${method} path=${path ?? 'none'}`);
+    if (method === 'GET' && path === 'devices') return this.getApiDevices();
+    if (method === 'GET' && path === 'messages') return this.getApiMessages();
+    if (method === 'GET' && path === 'outgoing') return this.getApiOutgoing();
+    return undefined;
+  }
+
+  /**
+   * Builds the device table for the frontend from the retained device data.
+   *
+   * @returns {ApiDevice[]} The devices sorted by deviceId with their config, state and subscribe payloads.
+   */
+  getApiDevices(): ApiDevice[] {
+    return Array.from(this.deviceData.entries())
+      .map(([deviceId, data]) => ({
+        deviceId,
+        name: data.name,
+        config: data.config ?? null,
+        state: data.state ?? null,
+        subscribe: data.subscribe ?? null,
+      }))
+      .toSorted((a, b) => a.deviceId.localeCompare(b.deviceId));
+  }
+
+  /**
+   * Returns the recent incoming MQTT messages for the frontend feed, newest first.
+   *
+   * @returns {ApiMessage[]} The retained MQTT messages, newest first.
+   */
+  getApiMessages(): ApiMessage[] {
+    return this.messages.toReversed();
+  }
+
+  /**
+   * Returns the recent outgoing MQTT messages (write path) for the frontend feed, newest first.
+   *
+   * @returns {ApiMessage[]} The retained outgoing MQTT messages, newest first.
+   */
+  getApiOutgoing(): ApiMessage[] {
+    return this.outgoing.toReversed();
   }
 }
