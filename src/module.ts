@@ -267,6 +267,10 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         this.log.debug(`MQTT ${packet.retain ? 'retained ' : ''}message on '${topic}': empty payload`);
         this.log.info(`Received empty payload on config topic '${topic}', treating as device deletion request.`);
         this.deviceData.delete(deviceId);
+        const statePrefix = `${this.config.topic}/${deviceId}/state/`;
+        for (const key of Array.from(this.state.keys())) {
+          if (key.startsWith(statePrefix)) this.state.delete(key);
+        }
         this.destroyDevice(deviceId);
         return;
       }
@@ -395,7 +399,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
     const device = new MatterbridgeEndpoint(deviceTypes as AtLeastOne<DeviceTypeDefinition>, {
       id: deviceId,
     });
-    device.configUrl = '/plugins/matterbridge-mqtt/?id=' + deviceId;
+    device.configUrl = '/plugins/matterbridge-mqtt/?id=' + encodeURIComponent(deviceId);
 
     /** Bridged Device Basic Information Cluster - BridgedDeviceBasicInformationServer */
     device.createDefaultBridgedDeviceBasicInformationClusterServer(
