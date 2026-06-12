@@ -9,7 +9,7 @@
     "reportUnusedDisableDirectives": "warn",
     "maxWarnings": 0
   },
-  "plugins": ["react", "typescript", "unicorn", "import", "oxc", "jsdoc", "promise"],
+  "plugins": ["eslint", "react", "react-perf", "jsx-a11y", "typescript", "unicorn", "import", "oxc", "jsdoc", "promise"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
@@ -48,6 +48,7 @@
     "react/jsx-filename-extension": "off", // JSX lives in .tsx files in this project
     "react/no-multi-comp": "off", // small colocated subcomponents (PayloadCell/PayloadDetail) are allowed
     "react/no-array-index-key": "off", // the message feed has no stable id; index key is acceptable here
+    "react-perf/jsx-no-new-object-as-prop": "off", // incompatible with MUI's idiomatic inline `sx={{ ... }}` styling
     "jsdoc/check-tag-names": ["error", { "definedTags": ["created", "contributor", "remarks"] }],
     "jsdoc/require-param": "error",
     "jsdoc/require-param-type": "error",

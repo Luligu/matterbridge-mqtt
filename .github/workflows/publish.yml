@@ -1,4 +1,4 @@
-# Publish to npm (plugin) v. 2.0.4
+# Publish to npm (plugin) v. 2.0.5
 # Path: .github/workflows/publish.yml
 
 name: Publish to npm
@@ -93,6 +93,9 @@ jobs:
 
       - name: Build the plugin (typescript)
         run: npx tsc --build tsconfig.build.json
+
+      - name: Typecheck the plugin
+        run: npm run typecheck
 
       - name: Lint the plugin
         run: npm run lint
@@ -234,6 +237,9 @@ jobs:
 
       - name: Build the plugin (typescript)
         run: npx tsc --build tsconfig.build.json
+
+      - name: Typecheck the plugin
+        run: npm run typecheck
 
       - name: Lint the plugin
         run: npm run lint

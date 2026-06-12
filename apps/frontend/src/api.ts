@@ -96,3 +96,13 @@ export async function getMessages(): Promise<ApiMessage[]> {
 export async function getOutgoing(): Promise<ApiMessage[]> {
   return (await apiFetch<ApiMessage[]>('GET', 'outgoing')) ?? [];
 }
+
+/**
+ * Fetches the current state of a single device as a pretty-printed JSON string.
+ *
+ * @param {string} id - The deviceId to look up.
+ * @returns {Promise<string | null>} The formatted device state, or `null` when the device is unknown or has no state.
+ */
+export async function getState(id: string): Promise<string | null> {
+  return (await apiFetch<string | null>('GET', 'state', { id })) ?? null;
+}

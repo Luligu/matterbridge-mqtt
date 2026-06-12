@@ -15,6 +15,12 @@
     "lint:fix": "oxlint --fix",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
+    "clean": "node ../../scripts/clean.mjs",
+    "deepClean": "node ../../scripts/deep-clean.mjs",
+    "reset": "npm run deepClean && npm run softReset",
+    "softReset": "npm install --no-fund --no-audit && npm prune --no-fund --no-audit && npm run build && npm run typecheck",
+    "checkDependencies": "npm install --no-fund --no-audit --no-save npm-check-updates && ncu && npm run softReset",
+    "updateDependencies": "npm install --no-fund --no-audit --no-save npm-check-updates && ncu -u && npm run softReset",
     "runMeBeforePublish": "npm run format && npm run lint && npm run build && npm run typecheck"
   },
   "dependencies": {
@@ -33,7 +39,6 @@
     "oxfmt": "0.54.0",
     "oxlint": "1.69.0",
     "oxlint-tsgolint": "0.23.0",
-    "typescript": "6.0.3",
     "vite": "8.0.16"
   }
 }

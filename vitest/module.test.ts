@@ -579,6 +579,14 @@ describe('MqttPlatform', () => {
       });
       expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Creating device with ID soil1/));
     });
+
+    it('should point the configUrl at the plugin frontend with the device id', () => {
+      const registerDeviceSpy = vi.spyOn(platform, 'registerDevice').mockReturnValue(Promise.resolve());
+      platform.createDevice('cfg-light', 'root', { deviceTypes: ['OnOffLight'], clusters: {} });
+      const registered = registerDeviceSpy.mock.calls[0]?.[0] as { configUrl?: string } | undefined;
+      expect(registered?.configUrl).toBe('/plugins/matterbridge-mqtt/?id=cfg-light');
+      registerDeviceSpy.mockRestore();
+    });
   });
 
   describe('destroyDevice', () => {
@@ -832,6 +840,33 @@ describe('MqttPlatform', () => {
     it('should serve outgoing messages via onFetch', async () => {
       mqttService.emit('published', `${config.topic}/lamp/write/root`, JSON.stringify({ OnOff: { onOff: false } }));
       await expect(platform.onFetch('GET', 'outgoing')).resolves.toEqual(platform.getApiOutgoing());
+    });
+
+    it('should return the formatted device state from getApiState', () => {
+      const mockDevice = { state: { OnOff: { onOff: true }, level: 254n } };
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-ignore accessing inherited method for testing
+      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
+      expect(platform.getApiState('light1')).toBe(JSON.stringify({ OnOff: { onOff: true }, level: '254' }, null, 2));
+      getDeviceByIdSpy.mockRestore();
+    });
+
+    it('should return null from getApiState when the device is unknown', () => {
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-ignore accessing inherited method for testing
+      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockImplementation(() => null);
+      expect(platform.getApiState('missing')).toBeNull();
+      getDeviceByIdSpy.mockRestore();
+    });
+
+    it('should serve device state via onFetch and ignore the state route without an id', async () => {
+      const mockDevice = { state: { OnOff: { onOff: false } } };
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-ignore accessing inherited method for testing
+      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
+      await expect(platform.onFetch('GET', 'state', { id: 'light1' })).resolves.toBe(platform.getApiState('light1'));
+      await expect(platform.onFetch('GET', 'state')).resolves.toBeUndefined();
+      getDeviceByIdSpy.mockRestore();
     });
   });
 });

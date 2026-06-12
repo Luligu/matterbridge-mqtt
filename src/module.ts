@@ -33,7 +33,7 @@ import {
   type PlatformConfig,
   type PlatformMatterbridge,
 } from 'matterbridge';
-import { type AnsiLogger, debugStringify, info, warn } from 'matterbridge/logger';
+import { type AnsiLogger, db, debugStringify, info, warn } from 'matterbridge/logger';
 import type { AtLeastOne } from 'matterbridge/matter';
 import type { BridgedDeviceBasicInformation, PowerSource } from 'matterbridge/matter/clusters';
 import { fireAndForget, inspectError } from 'matterbridge/utils';
@@ -102,6 +102,17 @@ export interface ApiMessage {
  */
 export default function initializePlugin(matterbridge: PlatformMatterbridge, log: AnsiLogger, config: MqttPlatformConfig): MqttPlatform {
   return new MqttPlatform(matterbridge, log, config);
+}
+
+/**
+ * JSON.stringify replacer that renders `bigint` values as strings so device state can be serialized.
+ *
+ * @param {string} _key - The property key (unused).
+ * @param {unknown} value - The property value.
+ * @returns {unknown} The original value, or its string form when it is a `bigint`.
+ */
+function jsonReplacer(_key: string, value: unknown): unknown {
+  return typeof value === 'bigint' ? value.toString() : value;
 }
 
 export class MqttPlatform extends MatterbridgeDynamicPlatform {
@@ -384,6 +395,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
     const device = new MatterbridgeEndpoint(deviceTypes as AtLeastOne<DeviceTypeDefinition>, {
       id: deviceId,
     });
+    device.configUrl = '/plugins/matterbridge-mqtt/?id=' + deviceId;
 
     /** Bridged Device Basic Information Cluster - BridgedDeviceBasicInformationServer */
     device.createDefaultBridgedDeviceBasicInformationClusterServer(
@@ -556,14 +568,18 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
    *
    * @param {string} method - The HTTP method.
    * @param {string} [path] - The resource path segment.
+   * @param {Record<string, unknown>} [query] - The query parameters.
+   * @param {unknown} [body] - The request body.
    * @returns {Promise<unknown>} The JSON-serializable response, or undefined for an unknown route (404).
    */
   // oxlint-disable-next-line typescript/require-await -- onFetch must be async to honor the MatterbridgePlatform override contract
-  override async onFetch(method: string, path?: string): Promise<unknown> {
-    this.log.debug(`onFetch called: method=${method} path=${path ?? 'none'}`);
+  override async onFetch(method: string, path?: string, query?: Record<string, unknown>, body?: unknown): Promise<unknown> {
+    // istanbul ignore next -- this log is useful for debugging but would be too verbose for tests, so we exclude it from coverage
+    this.log.debug(`onFetch called: method=${method} path=${path ?? 'none'} query=${query ? debugStringify(query) : 'none'}${db} body=${body ? debugStringify(body) : 'none'}`);
     if (method === 'GET' && path === 'devices') return this.getApiDevices();
     if (method === 'GET' && path === 'messages') return this.getApiMessages();
     if (method === 'GET' && path === 'outgoing') return this.getApiOutgoing();
+    if (method === 'GET' && path === 'state' && query?.id && typeof query.id === 'string') return this.getApiState(query.id);
     return undefined;
   }
 
@@ -600,5 +616,18 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
    */
   getApiOutgoing(): ApiMessage[] {
     return this.outgoing.toReversed();
+  }
+
+  /**
+   * Returns the current state of a single device as a pretty-printed JSON string for the frontend state view.
+   *
+   * @param {string} id - The deviceId to look up, taken from the request query.
+   * @returns {string | null} The formatted device state, or `null` when the device is unknown or has no state.
+   */
+  getApiState(id: string): string | null {
+    const device = this.getDeviceById(id);
+    const state = device?.state;
+    if (!state) return null;
+    return JSON.stringify(state, jsonReplacer, 2);
   }
 }

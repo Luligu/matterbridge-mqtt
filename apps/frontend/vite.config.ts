@@ -9,6 +9,7 @@ const base = '/plugins/matterbridge-mqtt/';
 export default defineConfig({
   base,
   plugins: [react()],
+  cacheDir: '.cache',
   build: {
     outDir: 'build',
     emptyOutDir: true,
