@@ -32,9 +32,11 @@ The **matterbridge-mqtt** plugin bridges any MQTT-capable device into the Matter
 - **Zero-code device onboarding** — send a single retained `config` message and Matterbridge automatically creates and registers the corresponding Matter endpoint.
 - **Broad device-type support** — lights (on/off, dimmable, colour-temperature, extended colour), plugs and outlets, mounted switches, sensors (contact, temperature, humidity, pressure, flow, light, occupancy, smoke/CO, air quality, rain, soil, water freeze/leak), pump, water valve, power source, and electrical sensor.
 - **Live state sync** — retained `state` messages drive cluster attribute updates so controllers always see the current device state, even after a restart.
+- **Selective attribute subscription** — a retained `subscribe` message lets each device declare exactly which cluster attributes it wants pushed back to its `write` topic.
 - **Matter state forwarding** — every Matter attribute change (e.g. `onOff`, `currentLevel`) is published back to the device's `write` topic as a structured JSON payload.
 - **Flexible MQTT connectivity** — configurable broker host, port, protocol version (3/4/5), credentials, client ID, and full TLS support (CA certificate, client certificate/key, `rejectUnauthorized`).
 - **Topic-based multi-device management** — a single broker connection and a single base topic handle an arbitrary number of devices; each device is identified by its `deviceId` path segment.
+- **Frontend** — a plugin frontend showing the created devices and all MQTT data.
 
 ---
 
@@ -144,6 +146,22 @@ and will receive all attributes changes it subscribed to.
 { OnOff: { onOff: false }, LevelControl: { currentLevel: 254 } }
 ```
 
+### Test script
+
+See [src/test-publish.ts](src/test-publish.ts) for working examples. It is a stand-alone helper that reads `~/.matterbridge/matterbridge-mqtt.config.json`, connects to the configured MQTT broker, and publishes retained `config`, `state` and `subscribe` messages for every supported device type.
+
+Run it after building:
+
+```shell
+node dist/test-publish.js
+```
+
+Parameters:
+
+- `--filter <name>` — only publish devices whose name contains `<name>` (e.g. `--filter Light` for all device types including `Light`).
+- `--update` — publish a changed `state` to the state topic of each device (state change only, no `config` or `subscribe`).
+- `--delete` — publish empty retained payloads to clear the topics instead of publishing `config`/`state`/`subscribe`. It will remove the devices from Matterbridge (no restart needed).
+
 ---
 
 # Repository setup
@@ -153,7 +171,7 @@ and will receive all attributes changes it subscribed to.
 - **No ESLint, no Prettier** — replaced by the [oxc](https://oxc.rs) stack ([oxlint](https://oxc.rs/docs/guide/usage/linter.html) for linting and [oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) for formatting).
 - **No `typescript` package** — replaced by [tsgo](https://github.com/microsoft/typescript-go) (`@typescript/native-preview`). The `typescript` package is kept only as a publish-time dependency while tsgo is still in preview.
 - **No Jest** — replaced by [Vitest](https://vitest.dev), which natively supports ESM without extra configuration.
-- **Far fewer dependencies** — the installed package count drops from 600+ to around 200.
+- **Far fewer dev dependencies** — the number of installed packages (development dependencies) drops from 600+ to around 100+.
 - **Much faster lint and format** — oxlint and oxfmt run in a fraction of the time of the ESLint / Prettier pipeline.
 - **Much faster build** — tsgo compiles the project in a fraction of the time of the standard `tsc` build.
 - **Editor support** — use the VS Code extensions for tsgo and oxc to get the same experience inside the editor.

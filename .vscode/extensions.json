@@ -4,8 +4,6 @@
     "typescriptteam.native-preview",
     "oxc.oxc-vscode",
     "ms-azuretools.vscode-containers",
-    "dbaeumer.vscode-eslint",
-    "esbenp.prettier-vscode",
     "anthropic.claude-code",
     "github.copilot-chat",
     "github.vscode-github-actions",

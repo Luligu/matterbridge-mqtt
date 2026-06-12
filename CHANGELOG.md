@@ -8,6 +8,20 @@ If you like this project and find it useful, please consider giving it a star on
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
+## [0.0.7] - 2026-06-12
+
+### Added
+
+- Refactor `test-publish` to allow also state update.
+- Add plugin frontend (it uses the new Matterbridge api).
+
+### Changed
+
+- Bump `@types/node` to v.25.9.3.
+- Bump `@typescript/native-preview` to v.7.0.0-dev.20260611.2.
+
+<a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
+
 ## [0.0.6] - 2026-06-10
 
 ### Added

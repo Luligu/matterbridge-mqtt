@@ -1,4 +1,4 @@
-# Codecov (plugin) v. 2.0.5
+# Codecov (plugin) v. 2.0.6
 # Path: .github/workflows/codecov.yml
 
 name: Codecov
@@ -52,6 +52,40 @@ jobs:
 
       - name: Link matterbridge in the project
         run: npm link matterbridge --no-fund --no-audit
+
+      - name: Build the plugin
+        run: npm run build
+
+      - name: Typecheck the plugin
+        run: npm run typecheck
+
+      - name: Lint the plugin
+        run: npm run lint
+
+      - name: Check frontend
+        id: check_frontend
+        shell: bash
+        run: echo "has_frontend=$(test -d apps/frontend && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Install frontend dependencies
+        if: steps.check_frontend.outputs.has_frontend == 'true'
+        working-directory: apps/frontend
+        run: npm ci --no-fund --no-audit
+
+      - name: Build the frontend
+        if: steps.check_frontend.outputs.has_frontend == 'true'
+        working-directory: apps/frontend
+        run: npm run build
+
+      - name: Typecheck the frontend
+        if: steps.check_frontend.outputs.has_frontend == 'true'
+        working-directory: apps/frontend
+        run: npm run typecheck
+
+      - name: Lint the frontend
+        if: steps.check_frontend.outputs.has_frontend == 'true'
+        working-directory: apps/frontend
+        run: npm run lint
 
       - name: Check config files
         id: check_configs
