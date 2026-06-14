@@ -47,7 +47,7 @@ jobs:
           "ref=$ref" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Clone matterbridge repo branch ${{ steps.select_matterbridge_ref.outputs.ref }}
-        run: git clone --depth 1 --single-branch --no-tags -b dev https://github.com/Luligu/matterbridge.git ../matterbridge
+        run: git clone --depth 1 --single-branch --no-tags -b ${{ steps.select_matterbridge_ref.outputs.ref }} https://github.com/Luligu/matterbridge.git ../matterbridge
 
       - name: Install matterbridge dependencies
         working-directory: ../matterbridge
@@ -64,7 +64,7 @@ jobs:
       - name: Install plugin dependencies
         run: npm ci --no-fund --no-audit
 
-      - name: Link matterbridge in the project
+      - name: Link matterbridge in the plugin
         run: npm link matterbridge --no-fund --no-audit
 
       - name: Build the plugin
@@ -76,12 +76,12 @@ jobs:
       - name: Lint the plugin
         run: npm run lint
 
-      - name: Check frontend
+      - name: Check the plugin frontend
         id: check_frontend
         shell: bash
-        run: echo "has_frontend=$(test -d apps/frontend && echo true || echo false)" >> $GITHUB_OUTPUT
+        run: echo "has_frontend=$(test -f apps/frontend/package.json && echo true || echo false)" >> $GITHUB_OUTPUT
 
-      - name: Install frontend dependencies
+      - name: Install the frontend dependencies
         if: steps.check_frontend.outputs.has_frontend == 'true'
         working-directory: apps/frontend
         run: npm ci --no-fund --no-audit

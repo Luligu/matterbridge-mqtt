@@ -1,4 +1,4 @@
-// .oxlintrc.json 1.0.6
+// .oxlintrc.json 1.0.8
 
 // This Oxlint configuration is designed for a TypeScript project using ESM modules.
 {
@@ -67,7 +67,7 @@
     "eslint/no-undefined": "off",
     "eslint/no-void": "off",
     "eslint/no-use-before-define": ["error", { "classes": false }],
-    "eslint/complexity": ["warn", { "max": 50 }],
+    "eslint/complexity": ["warn", { "max": 100 }],
     "unicorn/prefer-node-protocol": "error",
     "unicorn/require-post-message-target-origin": "off",
     "unicorn/prefer-add-event-listener": "off",
@@ -141,6 +141,7 @@
         "typescript/no-unsafe-type-assertion": "off",
         "typescript/no-explicit-any": "off",
         "typescript/unbound-method": "off",
+        "typescript/no-deprecated": ["warn", { "allow": ["invokeBehaviorCommand", "invokeSubscribeHandler"] }],
         "jest/require-to-throw-message": "off",
         "jest/no-conditional-in-test": "off",
         "jest/no-standalone-expect": "off",
@@ -174,6 +175,7 @@
         "typescript/no-unsafe-type-assertion": "off",
         "typescript/no-explicit-any": "off",
         "typescript/unbound-method": "off",
+        "typescript/no-deprecated": ["warn", { "allow": ["invokeBehaviorCommand", "invokeSubscribeHandler"] }],
         "vitest/require-to-throw-message": "off",
         "vitest/no-conditional-tests": "off",
         "vitest/no-standalone-expect": "off",
