@@ -29,9 +29,11 @@ sudo chmod +x .devcontainer/install-matterbridge-*.sh
 
 echo "2 - Creating directories..."
 sudo mkdir -p /home/node/Matterbridge /home/node/.matterbridge /home/node/.mattercert
+sudo mkdir -p /home/node/.claude /home/node/.codex
 
 echo "3 - Setting permissions..."
 sudo chown -R node:node . /home/node/Matterbridge /home/node/.matterbridge /home/node/.mattercert
+sudo chown -R node:node /home/node/.claude /home/node/.codex
 
 echo "4 - Installing the plugin dependencies..."
 npm install --no-fund --no-audit
