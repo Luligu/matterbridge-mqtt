@@ -77,7 +77,7 @@
     "watch": "tsgo --project tsconfig.build.json --watch",
     "typecheck": "tsgo --project tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest --reporter verbose",
+    "test:watch": "vitest watch",
     "test:verbose": "npm run test -- --reporter verbose",
     "test:coverage": "npm run test -- --coverage --coverage.thresholds.statements=100 --coverage.thresholds.branches=100 --coverage.thresholds.lines=100 --coverage.thresholds.functions=100",
     "lint": "oxlint --disable-nested-config",
