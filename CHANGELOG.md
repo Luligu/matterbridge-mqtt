@@ -31,6 +31,10 @@ If you like this project and find it useful, please consider giving it a star on
 - [oxlint]: Bump `oxlint` config to v.1.0.10.
 - [oxfmt]: Bump `oxfmt` config to v.1.0.3.
 
+### Fixed
+
+- [subscribe]: Defer subscribe to configure phase. Thanks Dischi (https://github.com/Luligu/matterbridge-mqtt/issues/6).
+
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
 ## [0.0.7] - 2026-06-12
