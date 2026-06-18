@@ -34,7 +34,7 @@
  * limitations under the License.
  */
 
-/* v8 ignore file cause is just a test script */
+/* v8 ignore file -- @preserve: stand-alone MQTT publish test script */
 
 // oxlint-disable no-console unicorn/no-process-exit
 

@@ -41,7 +41,7 @@ import type { MqttPlatformConfig } from './module.js';
  * mqttService.on('message', (topic, payload) => { ... });
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging -- intentional declaration merge for typed EventEmitter overloads
+// oxlint-disable-next-line typescript/no-unsafe-declaration-merging -- intentional declaration merge for typed EventEmitter overloads
 export interface MqttService {
   /** Emitted once the broker acknowledges the initial connection, when the connection closes, or when a reconnect attempt begins. */
   on(event: 'connect' | 'close' | 'reconnect', listener: () => void): this;
