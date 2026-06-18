@@ -120,6 +120,8 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
   private mqtt: MqttService;
   /** Maintains the state of each device: key = topic, value = payload */
   state: Map<string, string> = new Map();
+  /** Maintains the subscribe state of each device: key = topic, value = payload */
+  subscribe: Map<string, string> = new Map();
   /** Maximum number of retained incoming MQTT messages exposed to the frontend feed. */
   static readonly MAX_MESSAGES = 100;
   /** Ring buffer of the most recent incoming MQTT messages for the frontend feed. */
@@ -157,7 +159,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
   }
 
   override async onStart(reason?: string): Promise<void> {
-    this.log.info(`onStart called with reason: ${reason}`);
+    this.log.info(`Starting platform: ${reason}`);
 
     // Clear the select since we will be re-populating it based on the MQTT messages we receive, and we want to avoid any stale entries from previous runs
     await this.ready;
@@ -197,21 +199,30 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
     });
 
     await this.mqtt.connect();
+
+    this.log.info(`Finished starting platform`);
   }
 
   override async onConfigure(): Promise<void> {
     await super.onConfigure();
-    this.log.info('onConfigure called');
+    this.log.info('Configuring platform...');
+    this.log.debug('Setting states...');
     for (const [topic, payload] of this.state.entries()) {
       await this.updateHandler(topic, payload);
     }
+    this.log.debug('Setting subscribes...');
+    for (const [topic, payload] of this.subscribe.entries()) {
+      await this.subscribeHandler(topic, payload);
+    }
+    this.log.info('Finished configuring platform.');
   }
 
   override async onShutdown(reason?: string): Promise<void> {
     await super.onShutdown(reason);
-    this.log.info(`onShutdown called with reason: ${reason}`);
+    this.log.info(`Shutting down platform: ${reason}`);
     await this.mqtt.close();
     if (this.config.unregisterOnShutdown) await this.unregisterAllDevices();
+    this.log.info('Finished shutting down platform');
   }
 
   /**
@@ -281,7 +292,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       /** Create device */
       const message = JSON.parse(payload);
       this.log.debug(`MQTT ${packet.retain ? 'retained ' : ''}message on '${topic}': ${debugStringify(message)}`);
-      // istanbul ignore else cause is already checked above
+      // v8 ignore else cause is already checked above
       if (subTopic === 'config') {
         this.log.info(
           `Received ${info.bgMagenta.black.bold` config `} message for device ${info.bgCyan.black.bold` ${deviceId} `} endpoint ${info.bgGreen.black.bold` ${endpointName} `}`,
@@ -310,7 +321,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         }
         this.setDeviceEntry(deviceId, 'state', endpointName, message);
         this.state.set(topic, payload);
-        // istanbul ignore else
+        // v8 ignore else
         if (this.isConfigured) fireAndForget(this.updateHandler(topic, payload), this.log, `Failed to handle state update for device ${deviceId} on endpoint ${endpointName}`);
       } else if (subTopic === 'subscribe') {
         this.log.info(
@@ -321,39 +332,10 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
           return;
         }
         this.setDeviceEntry(deviceId, 'subscribe', endpointName, message);
-        for (const clusterName of Object.keys(message)) {
-          if (!this.getDeviceById(deviceId)?.hasClusterServer(clusterName)) {
-            this.log.warn(
-              `Cannot subscribe to cluster '${clusterName}' for device '${deviceId}' because the device does not have that cluster defined. Skipping subscribe configuration for this cluster.`,
-            );
-            continue;
-          }
-          const attributes = message[clusterName];
-          if (typeof attributes !== 'object' || attributes === null || !Array.isArray(attributes)) {
-            this.log.warn(
-              `Received MQTT message on topic '${topic}' with invalid format: attributes for cluster '${clusterName}' in subscribe are not an array. Ignoring subscribe configuration for this cluster.`,
-            );
-            continue;
-          }
-          for (const attributeName of attributes) {
-            if (!this.getDeviceById(deviceId)?.hasAttributeServer(clusterName, attributeName)) {
-              this.log.warn(
-                `Cannot subscribe to cluster '${clusterName}:${attributeName}' for device '${deviceId}' because the device does not have that attribute defined. Skipping subscribe configuration for this cluster.`,
-              );
-              continue;
-            }
-            this.getDeviceById(deviceId)?.subscribeAttribute(clusterName, attributeName, (value) => {
-              this.log.debug(`Received update for subscribed attribute '${clusterName}:${attributeName}' on device '${deviceId}': ${debugStringify(value)}`);
-              const subscribeTopic = `${this.config.topic}/${deviceId}/write/${endpointName}`;
-              const payload = JSON.stringify({ [clusterName]: { [attributeName]: value } });
-              fireAndForget(
-                this.mqtt.publish(subscribeTopic, payload, { retain: false }),
-                this.log,
-                `Failed to publish MQTT message for subscribed attribute update on '${subscribeTopic}' with payload ${payload}`,
-              );
-            });
-          }
-        }
+        this.subscribe.set(topic, payload);
+        // v8 ignore else
+        if (this.isConfigured)
+          fireAndForget(this.subscribeHandler(topic, payload), this.log, `Failed to handle subscribe update for device ${deviceId} on endpoint ${endpointName}`);
       } else if (subTopic === 'write') {
         // 'write' subTopic is used for attribute updates Matter controller >>> Matterbridge >>> MQTT >>> device
         return;
@@ -463,7 +445,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         continue;
       }
       const behavior = getBehaviourTypeFromClusterServerId(found.id);
-      /* istanbul ignore if -- current Matterbridge registry exposes a behavior for every supported cluster. */
+      /* v8 ignore next -- defensive only cause current Matterbridge registry exposes a behavior for every supported cluster. */
       if (!behavior) {
         this.log.warn(`Cluster '${cluster}' does not have a defined behavior. Skipping.`);
         continue;
@@ -522,6 +504,65 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
           continue;
         }
         await device.setCluster(cluster, parsedPayload[cluster], device.log);
+      }
+    }
+  }
+
+  /**
+   * Handles an MQTT message with subTopic `subscribe` by subscribing to the specified clusters and attributes on the corresponding device, and publishing any updates to those attributes back to MQTT.
+   *
+   * @param {string} topic - The MQTT topic on which the message was received. Expected format: `<baseTopic>/<deviceId>/subscribe/<endpointName>`.
+   * @param {string} payload - The raw JSON string payload of the message, expected to be a map of cluster names to arrays of attribute names to subscribe to.
+   * @returns {Promise<void>} A promise that resolves when the subscribe configuration has been processed.
+   */
+  // oxlint-disable-next-line typescript/require-await
+  async subscribeHandler(topic: string, payload: string): Promise<void> {
+    const { deviceId, subTopic, endpointName } = this.mqttTopicParser(topic) ?? {};
+    if (!deviceId || !subTopic || !endpointName) {
+      this.log.warn(`Skipping MQTT message with topic '${topic}' during subscribeHandler because it does not match expected format.`);
+      return;
+    }
+    const device = this.getDeviceById(deviceId);
+    if (!device) {
+      this.log.warn(`Skipping MQTT message with topic '${topic}' during subscribeHandler because device with ID '${deviceId}' is not registered.`);
+      return;
+    }
+    // TODO: add support for composed device types in the future if there is demand for it
+    // istanbul ignore else
+    if (endpointName === 'root') {
+      const message = JSON.parse(payload);
+      for (const clusterName of Object.keys(message)) {
+        if (!this.getDeviceById(deviceId)?.hasClusterServer(clusterName)) {
+          this.log.warn(
+            `Cannot subscribe to cluster '${clusterName}' for device '${deviceId}' because the device does not have that cluster defined. Skipping subscribe configuration for this cluster.`,
+          );
+          continue;
+        }
+        const attributes = message[clusterName];
+        if (typeof attributes !== 'object' || attributes === null || !Array.isArray(attributes)) {
+          this.log.warn(
+            `Received MQTT message on topic '${topic}' with invalid format: attributes for cluster '${clusterName}' in subscribe are not an array. Ignoring subscribe configuration for this cluster.`,
+          );
+          continue;
+        }
+        for (const attributeName of attributes) {
+          if (!this.getDeviceById(deviceId)?.hasAttributeServer(clusterName, attributeName)) {
+            this.log.warn(
+              `Cannot subscribe to cluster '${clusterName}:${attributeName}' for device '${deviceId}' because the device does not have that attribute defined. Skipping subscribe configuration for this cluster.`,
+            );
+            continue;
+          }
+          this.getDeviceById(deviceId)?.subscribeAttribute(clusterName, attributeName, (value) => {
+            this.log.debug(`Received update for subscribed attribute '${clusterName}:${attributeName}' on device '${deviceId}': ${debugStringify(value)}`);
+            const subscribeTopic = `${this.config.topic}/${deviceId}/write/${endpointName}`;
+            const payload = JSON.stringify({ [clusterName]: { [attributeName]: value } });
+            fireAndForget(
+              this.mqtt.publish(subscribeTopic, payload, { retain: false }),
+              this.log,
+              `Failed to publish MQTT message for subscribed attribute update on '${subscribeTopic}' with payload ${payload}`,
+            );
+          });
+        }
       }
     }
   }

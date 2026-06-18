@@ -8,6 +8,35 @@ If you like this project and find it useful, please consider giving it a star on
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
+## [0.0.8] - 2026-06-18
+
+### Added
+
+- [codex]: Add `AGENTS.md` for Codex.
+- [codex]: Add `.codex\config.toml` configuration for Codex.
+- [codex]: Add `.codex\rules\default.rules` rules (sandbox) for Codex.
+
+### Changed
+
+- [package]: Update dependencies.
+- [package]: Bump package to `automator` v.3.1.12 and the new toolchain.
+- [package]: Bump `.devcontainer/devcontainer.json` config to v.1.0.3.
+- [package]: Bump `.vscode/settings.json` config to v.1.0.3.
+- [package]: Bump `.vscode/extensions.json` config to v.1.0.3.
+- [package]: Bump `.vscode/tasks.json` config to v.1.0.2.
+- [workflows]: Bump `build.yml` workflow to v.2.0.5.
+- [workflows]: Bump `codecov.yml` workflow to v.2.0.6.
+- [workflows]: Bump `publish.yml` workflow to v.2.0.5.
+- [workflows]: Bump `codeql.yml` workflow to v.2.0.0.
+- [oxlint]: Bump `oxlint` config to v.1.0.10.
+- [oxfmt]: Bump `oxfmt` config to v.1.0.3.
+
+### Fixed
+
+- [subscribe]: Defer subscribe to configure phase. Thanks Dischi (https://github.com/Luligu/matterbridge-mqtt/issues/6).
+
+<a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
+
 ## [0.0.7] - 2026-06-12
 
 ### Added

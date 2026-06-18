@@ -108,7 +108,8 @@ describe('MqttPlatform', () => {
 
   it('should call onStart with reason', async () => {
     await platform.onStart('Test reason');
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`onStart called with reason: Test reason`);
+    expect(loggerInfoSpy).toHaveBeenCalledWith('Starting platform: Test reason');
+    expect(loggerInfoSpy).toHaveBeenCalledWith('Finished starting platform');
   });
 
   it('should create a light device', async () => {
@@ -184,8 +185,13 @@ describe('MqttPlatform', () => {
   });
 
   it('should call onConfigure', async () => {
+    platform.state.clear();
+    platform.subscribe.clear();
     await platform.onConfigure();
-    expect(loggerInfoSpy).toHaveBeenCalledWith('onConfigure called');
+    expect(loggerInfoSpy).toHaveBeenCalledWith('Configuring platform...');
+    expect(loggerDebugSpy).toHaveBeenCalledWith('Setting states...');
+    expect(loggerDebugSpy).toHaveBeenCalledWith('Setting subscribes...');
+    expect(loggerInfoSpy).toHaveBeenCalledWith('Finished configuring platform.');
   });
 
   it('should call onShutdown with reason', async () => {
@@ -193,7 +199,8 @@ describe('MqttPlatform', () => {
     await platform.onShutdown('Test reason');
     config.unregisterOnShutdown = true;
     await platform.onShutdown('Test reason');
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`onShutdown called with reason: Test reason`);
+    expect(loggerInfoSpy).toHaveBeenCalledWith('Shutting down platform: Test reason');
+    expect(loggerInfoSpy).toHaveBeenCalledWith('Finished shutting down platform');
   });
 
   describe('mqttTopicParser', () => {
@@ -254,11 +261,18 @@ describe('MqttPlatform', () => {
 
     it('should destroy device when config message has empty payload', () => {
       const topic = `${config.topic}/light1/config/root`;
+      const stateTopic = `${config.topic}/light1/state/root`;
+      const otherStateTopic = `${config.topic}/other-light/state/root`;
       const destroyDeviceSpy = vi.spyOn(platform, 'destroyDevice').mockImplementation(() => {});
+      platform.state.set(stateTopic, JSON.stringify({ OnOff: { onOff: true } }));
+      platform.state.set(otherStateTopic, JSON.stringify({ OnOff: { onOff: false } }));
       handleMqttMessage(platform, topic, '');
       expect(loggerLogSpy).toHaveBeenCalledWith(LogLevel.DEBUG, `MQTT message on '${topic}': empty payload`);
       expect(loggerInfoSpy).toHaveBeenCalledWith(expect.stringMatching(/treating as device deletion request/));
+      expect(platform.state.has(stateTopic)).toBe(false);
+      expect(platform.state.has(otherStateTopic)).toBe(true);
       expect(destroyDeviceSpy).toHaveBeenCalledWith('light1');
+      platform.state.delete(otherStateTopic);
       destroyDeviceSpy.mockRestore();
     });
 
@@ -363,72 +377,6 @@ describe('MqttPlatform', () => {
     it('should log warn when subscribe payload is null', () => {
       handleMqttMessage(platform, `${config.topic}/light1/subscribe/root`, JSON.stringify(null));
       expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/subscribe is missing or not an object/));
-    });
-
-    it('should warn when subscribe cluster is not on the device', () => {
-      const mockDevice = {
-        hasClusterServer: vi.fn<(cluster?: unknown) => boolean>().mockReturnValue(false),
-        hasAttributeServer: vi.fn<(cluster?: unknown, attribute?: unknown) => boolean>().mockReturnValue(true),
-        subscribeAttribute: vi.fn<(...args: unknown[]) => void>(),
-      };
-      // oxlint-disable-next-line typescript/ban-ts-comment
-      // @ts-ignore accessing inherited method for testing
-      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
-      handleMqttMessage(platform, `${config.topic}/light1/subscribe/root`, JSON.stringify({ OnOff: ['onOff'] }));
-      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/Cannot subscribe to cluster 'OnOff' for device 'light1'/));
-      expect(mockDevice.subscribeAttribute).not.toHaveBeenCalled();
-      getDeviceByIdSpy.mockRestore();
-    });
-
-    it('should warn when subscribe attributes are not an array', () => {
-      const mockDevice = {
-        hasClusterServer: vi.fn<(cluster?: unknown) => boolean>().mockReturnValue(true),
-        hasAttributeServer: vi.fn<(cluster?: unknown, attribute?: unknown) => boolean>().mockReturnValue(true),
-        subscribeAttribute: vi.fn<(...args: unknown[]) => void>(),
-      };
-      // oxlint-disable-next-line typescript/ban-ts-comment
-      // @ts-ignore accessing inherited method for testing
-      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
-      handleMqttMessage(platform, `${config.topic}/light1/subscribe/root`, JSON.stringify({ OnOff: { onOff: true } }));
-      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/attributes for cluster 'OnOff' in subscribe are not an array/));
-      expect(mockDevice.subscribeAttribute).not.toHaveBeenCalled();
-      getDeviceByIdSpy.mockRestore();
-    });
-
-    it('should warn when subscribe attribute is not on the device', () => {
-      const mockDevice = {
-        hasClusterServer: vi.fn<(cluster?: unknown) => boolean>().mockReturnValue(true),
-        hasAttributeServer: vi.fn<(cluster?: unknown, attribute?: unknown) => boolean>().mockReturnValue(false),
-        subscribeAttribute: vi.fn<(...args: unknown[]) => void>(),
-      };
-      // oxlint-disable-next-line typescript/ban-ts-comment
-      // @ts-ignore accessing inherited method for testing
-      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
-      handleMqttMessage(platform, `${config.topic}/light1/subscribe/root`, JSON.stringify({ OnOff: ['onOff'] }));
-      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/Cannot subscribe to cluster 'OnOff:onOff' for device 'light1'/));
-      expect(mockDevice.subscribeAttribute).not.toHaveBeenCalled();
-      getDeviceByIdSpy.mockRestore();
-    });
-
-    it('should subscribe attribute and publish updates on the write topic', () => {
-      let listener: ((value: unknown) => void) | undefined;
-      const mockDevice = {
-        hasClusterServer: vi.fn<(cluster?: unknown) => boolean>().mockReturnValue(true),
-        hasAttributeServer: vi.fn<(cluster?: unknown, attribute?: unknown) => boolean>().mockReturnValue(true),
-        subscribeAttribute: vi.fn<(cluster: string, attribute: string, l: (value: unknown) => void) => void>().mockImplementation((_cluster, _attribute, l) => {
-          listener = l;
-        }),
-      };
-      // oxlint-disable-next-line typescript/ban-ts-comment
-      // @ts-ignore accessing inherited method for testing
-      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
-      handleMqttMessage(platform, `${config.topic}/light1/subscribe/root`, JSON.stringify({ OnOff: ['onOff'] }));
-      expect(mockDevice.subscribeAttribute).toHaveBeenCalledWith('OnOff', 'onOff', expect.any(Function));
-      expect(listener).toBeDefined();
-      listener?.(true);
-      expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Received update for subscribed attribute 'OnOff:onOff' on device 'light1'/));
-      expect(mqttPublishSpy).toHaveBeenCalledWith(`${config.topic}/light1/write/root`, JSON.stringify({ OnOff: { onOff: true } }), { retain: false });
-      getDeviceByIdSpy.mockRestore();
     });
 
     it('should ignore write message when payload is empty', () => {
@@ -618,11 +566,15 @@ describe('MqttPlatform', () => {
   describe('onConfigure', () => {
     beforeEach(() => {
       platform.state.clear();
+      platform.subscribe.clear();
     });
 
-    it('should log info when state is empty', async () => {
+    it('should log info when state and subscribe entries are empty', async () => {
       await platform.onConfigure();
-      expect(loggerInfoSpy).toHaveBeenCalledWith('onConfigure called');
+      expect(loggerInfoSpy).toHaveBeenCalledWith('Configuring platform...');
+      expect(loggerDebugSpy).toHaveBeenCalledWith('Setting states...');
+      expect(loggerDebugSpy).toHaveBeenCalledWith('Setting subscribes...');
+      expect(loggerInfoSpy).toHaveBeenCalledWith('Finished configuring platform.');
     });
 
     it('should replay stored state through updateHandler', async () => {
@@ -631,6 +583,14 @@ describe('MqttPlatform', () => {
       await platform.onConfigure();
       expect(updateHandlerSpy).toHaveBeenCalledWith(`${config.topic}/light1/state/root`, JSON.stringify({ OnOff: { onOff: true } }));
       updateHandlerSpy.mockRestore();
+    });
+
+    it('should replay stored subscribe entries through subscribeHandler', async () => {
+      const subscribeHandlerSpy = vi.spyOn(platform, 'subscribeHandler').mockResolvedValue();
+      platform.subscribe.set(`${config.topic}/light1/subscribe/root`, JSON.stringify({ OnOff: ['onOff'] }));
+      await platform.onConfigure();
+      expect(subscribeHandlerSpy).toHaveBeenCalledWith(`${config.topic}/light1/subscribe/root`, JSON.stringify({ OnOff: ['onOff'] }));
+      subscribeHandlerSpy.mockRestore();
     });
   });
 
@@ -718,6 +678,118 @@ describe('MqttPlatform', () => {
       expect(mockSetCluster).toHaveBeenCalledTimes(1);
       expect(mockSetCluster).toHaveBeenCalledWith('OnOff', { onOff: true }, expect.anything());
       expect(mockWarn).toHaveBeenCalledWith(expect.stringMatching(/does not have cluster/));
+      getDeviceByIdSpy.mockRestore();
+    });
+  });
+
+  describe('subscribeHandler', () => {
+    it('should warn when subscribe topic does not match expected format', async () => {
+      await platform.subscribeHandler('invalid-topic', JSON.stringify({ OnOff: ['onOff'] }));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/does not match expected format/));
+    });
+
+    it('should warn when device is not registered', async () => {
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-ignore accessing inherited method for testing
+      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockImplementation(() => null);
+      await platform.subscribeHandler(`${config.topic}/unknownDevice/subscribe/root`, JSON.stringify({ OnOff: ['onOff'] }));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/is not registered/));
+      getDeviceByIdSpy.mockRestore();
+    });
+
+    it('should skip subscriptions for non-root endpoint', async () => {
+      const mockDevice = {
+        hasClusterServer: vi.fn<(cluster?: unknown) => boolean>().mockReturnValue(true),
+        hasAttributeServer: vi.fn<(cluster?: unknown, attribute?: unknown) => boolean>().mockReturnValue(true),
+        subscribeAttribute: vi.fn<(...args: unknown[]) => void>(),
+      };
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-ignore accessing inherited method for testing
+      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
+      await platform.subscribeHandler(`${config.topic}/light1/subscribe/sensor`, JSON.stringify({ OnOff: ['onOff'] }));
+      expect(mockDevice.subscribeAttribute).not.toHaveBeenCalled();
+      getDeviceByIdSpy.mockRestore();
+    });
+
+    it('should warn when subscribe cluster is not on the device', async () => {
+      const mockDevice = {
+        hasClusterServer: vi.fn<(cluster?: unknown) => boolean>().mockReturnValue(false),
+        hasAttributeServer: vi.fn<(cluster?: unknown, attribute?: unknown) => boolean>().mockReturnValue(true),
+        subscribeAttribute: vi.fn<(...args: unknown[]) => void>(),
+      };
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-ignore accessing inherited method for testing
+      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
+      await platform.subscribeHandler(`${config.topic}/light1/subscribe/root`, JSON.stringify({ OnOff: ['onOff'] }));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/Cannot subscribe to cluster 'OnOff' for device 'light1'/));
+      expect(mockDevice.subscribeAttribute).not.toHaveBeenCalled();
+      getDeviceByIdSpy.mockRestore();
+    });
+
+    it('should warn when subscribe attributes are not an array', async () => {
+      const mockDevice = {
+        hasClusterServer: vi.fn<(cluster?: unknown) => boolean>().mockReturnValue(true),
+        hasAttributeServer: vi.fn<(cluster?: unknown, attribute?: unknown) => boolean>().mockReturnValue(true),
+        subscribeAttribute: vi.fn<(...args: unknown[]) => void>(),
+      };
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-ignore accessing inherited method for testing
+      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
+      await platform.subscribeHandler(`${config.topic}/light1/subscribe/root`, JSON.stringify({ OnOff: { onOff: true } }));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/attributes for cluster 'OnOff' in subscribe are not an array/));
+      expect(mockDevice.subscribeAttribute).not.toHaveBeenCalled();
+      getDeviceByIdSpy.mockRestore();
+    });
+
+    it('should warn when subscribe attribute is not on the device', async () => {
+      const mockDevice = {
+        hasClusterServer: vi.fn<(cluster?: unknown) => boolean>().mockReturnValue(true),
+        hasAttributeServer: vi.fn<(cluster?: unknown, attribute?: unknown) => boolean>().mockReturnValue(false),
+        subscribeAttribute: vi.fn<(...args: unknown[]) => void>(),
+      };
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-ignore accessing inherited method for testing
+      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
+      await platform.subscribeHandler(`${config.topic}/light1/subscribe/root`, JSON.stringify({ OnOff: ['onOff'] }));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/Cannot subscribe to cluster 'OnOff:onOff' for device 'light1'/));
+      expect(mockDevice.subscribeAttribute).not.toHaveBeenCalled();
+      getDeviceByIdSpy.mockRestore();
+    });
+
+    it('should subscribe attribute and publish updates on the write topic', async () => {
+      let listener: ((value: unknown) => void) | undefined;
+      const mockDevice = {
+        hasClusterServer: vi.fn<(cluster?: unknown) => boolean>().mockReturnValue(true),
+        hasAttributeServer: vi.fn<(cluster?: unknown, attribute?: unknown) => boolean>().mockReturnValue(true),
+        subscribeAttribute: vi.fn<(cluster: string, attribute: string, l: (value: unknown) => void) => void>().mockImplementation((_cluster, _attribute, l) => {
+          listener = l;
+        }),
+      };
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-ignore accessing inherited method for testing
+      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
+      await platform.subscribeHandler(`${config.topic}/light1/subscribe/root`, JSON.stringify({ OnOff: ['onOff'] }));
+      expect(mockDevice.subscribeAttribute).toHaveBeenCalledWith('OnOff', 'onOff', expect.any(Function));
+      expect(listener).toBeDefined();
+      listener?.(true);
+      expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Received update for subscribed attribute 'OnOff:onOff' on device 'light1'/));
+      expect(mqttPublishSpy).toHaveBeenCalledWith(`${config.topic}/light1/write/root`, JSON.stringify({ OnOff: { onOff: true } }), { retain: false });
+      getDeviceByIdSpy.mockRestore();
+    });
+
+    it('should subscribe known attributes and skip unknown attributes in the same cluster', async () => {
+      const mockDevice = {
+        hasClusterServer: vi.fn<(cluster?: unknown) => boolean>().mockReturnValue(true),
+        hasAttributeServer: vi.fn<(cluster?: unknown, attribute?: unknown) => boolean>().mockImplementation((_cluster, attribute) => attribute === 'onOff'),
+        subscribeAttribute: vi.fn<(...args: unknown[]) => void>(),
+      };
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-ignore accessing inherited method for testing
+      const getDeviceByIdSpy = vi.spyOn(platform, 'getDeviceById').mockReturnValue(mockDevice);
+      await platform.subscribeHandler(`${config.topic}/light1/subscribe/root`, JSON.stringify({ OnOff: ['onOff', 'missingAttribute'] }));
+      expect(mockDevice.subscribeAttribute).toHaveBeenCalledTimes(1);
+      expect(mockDevice.subscribeAttribute).toHaveBeenCalledWith('OnOff', 'onOff', expect.any(Function));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringMatching(/Cannot subscribe to cluster 'OnOff:missingAttribute' for device 'light1'/));
       getDeviceByIdSpy.mockRestore();
     });
   });
