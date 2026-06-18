@@ -79,7 +79,7 @@
     "test": "vitest run",
     "test:watch": "vitest --reporter verbose",
     "test:verbose": "npm run test -- --reporter verbose",
-    "test:coverage": "npm run test -- --reporter verbose --coverage",
+    "test:coverage": "npm run test -- --coverage --coverage.thresholds.statements=100 --coverage.thresholds.branches=100 --coverage.thresholds.lines=100 --coverage.thresholds.functions=100",
     "lint": "oxlint --disable-nested-config",
     "lint:fix": "oxlint --fix --disable-nested-config",
     "format": "oxfmt",
@@ -115,7 +115,7 @@
   },
   "devDependencies": {
     "@types/node": "25.9.3",
-    "@typescript/native-preview": "7.0.0-dev.20260616.1",
+    "@typescript/native-preview": "7.0.0-dev.20260617.2",
     "@vitest/coverage-v8": "4.1.9",
     "oxfmt": "0.55.0",
     "oxlint": "1.70.0",

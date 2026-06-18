@@ -33,7 +33,6 @@ vi.mock('mqtt', () => ({
 }));
 
 vi.mock('node:fs', async (importOriginal) => {
-  // oxlint-disable-next-line typescript/consistent-type-imports
   const actual = await importOriginal<typeof import('node:fs')>();
   return { ...actual, readFileSync: mockReadFileSync };
 });
@@ -45,7 +44,6 @@ let MqttService: typeof MqttServiceType;
 // --- Test data ---
 
 // node:fs is mocked above for the SUT's certificate reads, so load the config with the real fs.
-// oxlint-disable-next-line typescript/consistent-type-imports
 const { readFileSync } = await vi.importActual<typeof import('node:fs')>('node:fs');
 
 const defaultConfig: MqttPlatformConfig = JSON.parse(readFileSync('matterbridge-mqtt.config.json', 'utf-8'));
