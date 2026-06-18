@@ -1,6 +1,6 @@
 {
   "name": "matterbridge-mqtt",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Matterbridge MQTT plugin",
   "author": "https://github.com/Luligu",
   "license": "Apache-2.0",
@@ -115,7 +115,7 @@
   },
   "devDependencies": {
     "@types/node": "25.9.3",
-    "@typescript/native-preview": "7.0.0-dev.20260617.2",
+    "@typescript/native-preview": "7.0.0-dev.20260618.1",
     "@vitest/coverage-v8": "4.1.9",
     "oxfmt": "0.55.0",
     "oxlint": "1.70.0",
