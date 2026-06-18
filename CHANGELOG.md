@@ -10,6 +10,12 @@ If you like this project and find it useful, please consider giving it a star on
 
 ## [0.0.9] - Dev branch
 
+### Changed
+
+- [platform]: Require Matterbridge 3.9.1.
+- [package]: Update dependencies.
+- [package]: Bump `@typescript/native-preview` to v.7.0.0-dev.20260618.1.
+
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
 ## [0.0.8] - 2026-06-18
