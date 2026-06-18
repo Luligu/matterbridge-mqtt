@@ -34,7 +34,7 @@
  * limitations under the License.
  */
 
-/* istanbul ignore file cause is just a test script */
+/* v8 ignore file cause is just a test script */
 
 // oxlint-disable no-console unicorn/no-process-exit
 
