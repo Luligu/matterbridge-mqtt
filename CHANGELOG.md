@@ -8,13 +8,17 @@ If you like this project and find it useful, please consider giving it a star on
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
-## [0.0.9] - Dev branch
+## [0.0.9] - 2026-06-20
 
 ### Changed
 
 - [platform]: Require Matterbridge 3.9.1.
 - [package]: Update dependencies.
 - [package]: Bump `@typescript/native-preview` to v.7.0.0-dev.20260618.1.
+- [oxlint]: Bump `oxlint` config to v.1.0.13.
+- [oxfmt]: Bump `oxfmt` config to v.1.0.3.
+- [devcontainer]: Bump `.devcontainer/devcontainer.json` config to v.1.0.4.
+- [package]: Bump `.vscode/extensions.json` config to v.1.0.4.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 

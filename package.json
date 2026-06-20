@@ -72,7 +72,13 @@
     "native": true,
     "git": false,
     "version": false,
-    "publish": false
+    "publish": false,
+    "coverage": {
+      "lines": 100,
+      "functions": 100,
+      "branches": 100,
+      "statements": 100
+    }
   },
   "scripts": {
     "start": "matterbridge",
@@ -111,8 +117,8 @@
     "node-persist-manager": "2.0.2"
   },
   "devDependencies": {
-    "@types/node": "25.9.3",
-    "@typescript/native-preview": "7.0.0-dev.20260618.1",
+    "@types/node": "26.0.0",
+    "@typescript/native-preview": "7.0.0-dev.20260620.1",
     "@vitest/coverage-v8": "4.1.9",
     "oxfmt": "0.55.0",
     "oxlint": "1.70.0",
