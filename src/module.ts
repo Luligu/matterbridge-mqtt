@@ -147,8 +147,8 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
     super(matterbridge, log, config);
 
     // Verify that Matterbridge is the correct version
-    if (typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.9.0')) {
-      throw new Error(`This plugin requires Matterbridge version >= "3.9.0". Please update Matterbridge to the latest version in the frontend.`);
+    if (typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.9.1')) {
+      throw new Error(`This plugin requires Matterbridge version >= "3.9.1". Please update Matterbridge to the latest version in the frontend.`);
     }
 
     this.log.info(`Initializing platform: ${this.config.name}`);
@@ -292,7 +292,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       /** Create device */
       const message = JSON.parse(payload);
       this.log.debug(`MQTT ${packet.retain ? 'retained ' : ''}message on '${topic}': ${debugStringify(message)}`);
-      // v8 ignore else cause is already checked above
+      /* v8 ignore else -- @preserve: subTopic is validated above. */
       if (subTopic === 'config') {
         this.log.info(
           `Received ${info.bgMagenta.black.bold` config `} message for device ${info.bgCyan.black.bold` ${deviceId} `} endpoint ${info.bgGreen.black.bold` ${endpointName} `}`,
@@ -321,7 +321,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         }
         this.setDeviceEntry(deviceId, 'state', endpointName, message);
         this.state.set(topic, payload);
-        // v8 ignore else
+        /* v8 ignore else -- @preserve: deferred until onConfigure when the platform is not configured yet. */
         if (this.isConfigured) fireAndForget(this.updateHandler(topic, payload), this.log, `Failed to handle state update for device ${deviceId} on endpoint ${endpointName}`);
       } else if (subTopic === 'subscribe') {
         this.log.info(
@@ -333,7 +333,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         }
         this.setDeviceEntry(deviceId, 'subscribe', endpointName, message);
         this.subscribe.set(topic, payload);
-        // v8 ignore else
+        /* v8 ignore else -- @preserve: deferred until onConfigure when the platform is not configured yet. */
         if (this.isConfigured)
           fireAndForget(this.subscribeHandler(topic, payload), this.log, `Failed to handle subscribe update for device ${deviceId} on endpoint ${endpointName}`);
       } else if (subTopic === 'write') {
@@ -445,7 +445,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         continue;
       }
       const behavior = getBehaviourTypeFromClusterServerId(found.id);
-      /* v8 ignore next -- defensive only cause current Matterbridge registry exposes a behavior for every supported cluster. */
+      /* v8 ignore next -- @preserve: defensive only cause current Matterbridge registry exposes a behavior for every supported cluster. */
       if (!behavior) {
         this.log.warn(`Cluster '${cluster}' does not have a defined behavior. Skipping.`);
         continue;
@@ -494,7 +494,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       return;
     }
     // TODO: add support for composed device types in the future if there is demand for it
-    // istanbul ignore else
+    /* v8 ignore else -- @preserve: defensive only cause we expect the endpointName to be 'root' for now since we don't support composed device types yet, but this leaves room for future expansion. */
     if (endpointName === 'root') {
       const parsedPayload = JSON.parse(payload);
       for (const cluster of Object.keys(parsedPayload)) {
@@ -528,11 +528,11 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       return;
     }
     // TODO: add support for composed device types in the future if there is demand for it
-    // istanbul ignore else
+    /* v8 ignore else -- @preserve: defensive only cause we expect the endpointName to be 'root' for now since we don't support composed device types yet, but this leaves room for future expansion. */
     if (endpointName === 'root') {
       const message = JSON.parse(payload);
       for (const clusterName of Object.keys(message)) {
-        if (!this.getDeviceById(deviceId)?.hasClusterServer(clusterName)) {
+        if (!device.hasClusterServer(clusterName)) {
           this.log.warn(
             `Cannot subscribe to cluster '${clusterName}' for device '${deviceId}' because the device does not have that cluster defined. Skipping subscribe configuration for this cluster.`,
           );
@@ -546,13 +546,13 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
           continue;
         }
         for (const attributeName of attributes) {
-          if (!this.getDeviceById(deviceId)?.hasAttributeServer(clusterName, attributeName)) {
+          if (!device.hasAttributeServer(clusterName, attributeName)) {
             this.log.warn(
               `Cannot subscribe to cluster '${clusterName}:${attributeName}' for device '${deviceId}' because the device does not have that attribute defined. Skipping subscribe configuration for this cluster.`,
             );
             continue;
           }
-          this.getDeviceById(deviceId)?.subscribeAttribute(clusterName, attributeName, (value) => {
+          device.subscribeAttribute(clusterName, attributeName, (value) => {
             this.log.debug(`Received update for subscribed attribute '${clusterName}:${attributeName}' on device '${deviceId}': ${debugStringify(value)}`);
             const subscribeTopic = `${this.config.topic}/${deviceId}/write/${endpointName}`;
             const payload = JSON.stringify({ [clusterName]: { [attributeName]: value } });
@@ -619,8 +619,10 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
    */
   // oxlint-disable-next-line typescript/require-await -- onFetch must be async to honor the MatterbridgePlatform override contract
   override async onFetch(method: string, path?: string, query?: Record<string, unknown>, body?: unknown): Promise<unknown> {
-    // istanbul ignore next -- this log is useful for debugging but would be too verbose for tests, so we exclude it from coverage
-    this.log.debug(`onFetch called: method=${method} path=${path ?? 'none'} query=${query ? debugStringify(query) : 'none'}${db} body=${body ? debugStringify(body) : 'none'}`);
+    /* v8 ignore next -- @preserve: this log is useful for debugging but would be too verbose for tests, so we exclude it from coverage. */
+    this.log.debug(
+      `onFetch called: method=${method} path=${path ?? 'none'} query=${query ? debugStringify(query) : 'none'}${db} body=${body ? debugStringify(body) : 'none'}${db}`,
+    );
     if (method === 'GET' && path === 'devices') return this.getApiDevices();
     if (method === 'GET' && path === 'messages') return this.getApiMessages();
     if (method === 'GET' && path === 'outgoing') return this.getApiOutgoing();

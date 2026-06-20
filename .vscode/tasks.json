@@ -1,7 +1,8 @@
-// VS Code tasks v. 1.0.2
+// VS Code tasks v. 1.0.3
 {
   "version": "2.0.0",
   "tasks": [
+    // --DO NOT EDIT BELOW THIS LINE--
     {
       "label": "Start",
       "detail": "npm run start",
@@ -114,6 +115,14 @@
       "problemMatcher": []
     },
     {
+      "label": "Upgrade",
+      "detail": "Upgrade the package with Automator",
+      "type": "shell",
+      "command": "node",
+      "args": ["scripts/run-automator.mjs"],
+      "problemMatcher": []
+    },
+    {
       "label": "Git Status",
       "detail": "Run Git Status Script",
       "type": "shell",
@@ -145,5 +154,6 @@
       "args": ["scripts/remove-workflows.mjs"],
       "problemMatcher": []
     }
+    // --DO NOT EDIT ABOVE THIS LINE--
   ]
 }
