@@ -67,6 +67,7 @@ export async function apiFetch<T = unknown>(method: ApiMethod, path: string, que
     throw new Error(`Plugin API ${method} ${path} failed with status ${response.status}`);
   }
   if (response.status === 204) return undefined;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return (await response.json()) as T;
 }
 

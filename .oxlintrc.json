@@ -27,7 +27,7 @@
   },
   "options": {
     "reportUnusedDisableDirectives": "warn",
-    "respectEslintDisableDirectives": true,
+    "respectEslintDisableDirectives": false,
     "typeAware": true,
     "typeCheck": true,
     "maxWarnings": 0

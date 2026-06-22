@@ -1,6 +1,6 @@
 {
   "name": "matterbridge-mqtt",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Matterbridge MQTT plugin",
   "author": "https://github.com/Luligu",
   "license": "Apache-2.0",
@@ -70,9 +70,10 @@
     "plugin": true,
     "vitest": true,
     "native": true,
-    "git": false,
+    "git": true,
     "version": false,
     "publish": false,
+    "frontend": true,
     "coverage": {
       "lines": 100,
       "functions": 100,
@@ -113,12 +114,12 @@
   },
   "dependencies": {
     "mqtt": "5.15.1",
-    "node-ansi-logger": "3.2.1",
-    "node-persist-manager": "2.0.2"
+    "node-ansi-logger": "3.3.0",
+    "node-persist-manager": "2.1.0"
   },
   "devDependencies": {
     "@types/node": "26.0.0",
-    "@typescript/native-preview": "7.0.0-dev.20260620.1",
+    "@typescript/native-preview": "7.0.0-dev.20260621.1",
     "@vitest/coverage-v8": "4.1.9",
     "oxfmt": "0.55.0",
     "oxlint": "1.70.0",

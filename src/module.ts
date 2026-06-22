@@ -168,6 +168,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
     this.mqtt.on('connect', () => {
       this.log.info('MQTT connected');
       void this.mqtt.subscribe(`${this.config.topic}/#`);
+      this.wssSendSnackbarMessage(`Plugin ${this.name} - MQTT connected`, 5, 'success');
     });
 
     this.mqtt.on('subscribed', (topic: string) => {
@@ -184,14 +185,17 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
 
     this.mqtt.on('close', () => {
       this.log.info('MQTT connection closed');
+      this.wssSendSnackbarMessage(`Plugin ${this.name} - MQTT connection closed`, 5, 'warning');
     });
 
     this.mqtt.on('reconnect', () => {
       this.log.debug('MQTT reconnecting');
+      this.wssSendSnackbarMessage(`Plugin ${this.name} - MQTT reconnecting`, 5, 'warning');
     });
 
     this.mqtt.on('error', (error) => {
       this.log.error(`MQTT error: ${error.message}`);
+      this.wssSendSnackbarMessage(`Plugin ${this.name} - MQTT error: ${error.message}`, 0, 'error');
     });
 
     this.mqtt.on('message', (topic, payload, packet) => {

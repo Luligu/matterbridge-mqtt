@@ -8,6 +8,25 @@ If you like this project and find it useful, please consider giving it a star on
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
+## [0.0.10] - 2026-06-22
+
+### Added
+
+- [platform]: Add snackbar messages.
+
+### Changed
+
+- [package]: Update dependencies.
+- [package]: Bump `node-ansi-logger` to v.3.3.0.
+- [package]: Bump `node-persist-manager` to v.2.1.0.
+- [package]: Bump `@typescript/native-preview` to v.7.0.0-dev.20260621.1.
+
+### Fixed
+
+- [frontend]: Set base to `./` for production. This allows connection from Ingress.
+
+<a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
+
 ## [0.0.9] - 2026-06-20
 
 ### Changed
