@@ -1,6 +1,6 @@
 // .oxlintrc.json 1.0.5
 
-// This Oxlint configuration is designed for a Vite/React/Typescript frontend using ESM modules.
+// This Oxlint configuration is designed for a Vite/React/TypeScript frontend using ESM modules.
 // No options are allowed here because this config is extended by the root .oxlintrc.json
 // Use with: "lint": "oxlint --config .oxlintrc.json --max-warnings 0 --type-check --type-aware --report-unused-disable-directives-severity warn",
 // Use with: "lint:fix": "oxlint --config .oxlintrc.json --max-warnings 0 --type-check --type-aware --report-unused-disable-directives-severity warn --fix",

@@ -1,6 +1,6 @@
 // vite.config.ts 1.0.1
 
-// This Vite configuration is designed for a Vite/React/Typescript frontend using ESM modules.
+// This Vite configuration is designed for a Vite/React/TypeScript frontend using ESM modules.
 
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';

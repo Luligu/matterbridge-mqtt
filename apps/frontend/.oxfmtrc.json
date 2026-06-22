@@ -1,6 +1,6 @@
 // .oxfmtrc.json 1.0.4
 
-// This Oxfmt configuration is designed for a Vite/React/Typescript frontend using ESM modules.
+// This Oxfmt configuration is designed for a Vite/React/TypeScript frontend using ESM modules.
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "ignorePatterns": ["**/.cache/**", "**/.git/**", "**/build/**", "**/coverage/**", "**/temp/**", "**/node_modules/**", "**/screenshots/**", "**/package-lock.json"],
