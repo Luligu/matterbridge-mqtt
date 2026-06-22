@@ -70,7 +70,7 @@
     "plugin": true,
     "vitest": true,
     "native": true,
-    "git": false,
+    "git": true,
     "version": false,
     "publish": false,
     "frontend": true,
