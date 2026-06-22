@@ -15,7 +15,7 @@ const POLL_INTERVAL_MS = 2000;
  * @returns {JSX.Element} The rendered device state view.
  */
 export function DeviceState({ id }: { id: string }) {
-  const { data, error } = usePolling(() => getState(id), POLL_INTERVAL_MS);
+  const { data, error } = usePolling(async () => getState(id), POLL_INTERVAL_MS);
 
   if (error) {
     return (

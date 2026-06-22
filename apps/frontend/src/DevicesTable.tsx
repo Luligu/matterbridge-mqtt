@@ -114,7 +114,6 @@ export function DevicesTable({ devices }: { devices: ApiDevice[] }) {
                     </Typography>
                   </TableCell>
                   {KINDS.map((kind) => (
-                    // oxlint-disable-next-line react-perf/jsx-no-new-function-as-prop -- per-row toggle handler is parametrized by deviceId/kind and cannot be hoisted out of the map
                     <PayloadCell key={kind} entry={device[kind]} selected={exp?.kind === kind} onClick={() => toggle(device.deviceId, kind)} />
                   ))}
                 </TableRow>

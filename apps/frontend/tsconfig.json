@@ -1,3 +1,6 @@
+// tsconfig.json 1.0.0
+
+// This TypeScript configuration is designed for a Vite/React/Typescript frontend using ESM modules.
 {
   "compilerOptions": {
     "target": "ESNext",
