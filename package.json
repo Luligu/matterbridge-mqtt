@@ -73,6 +73,7 @@
     "git": false,
     "version": false,
     "publish": false,
+    "frontend": true,
     "coverage": {
       "lines": 100,
       "functions": 100,
