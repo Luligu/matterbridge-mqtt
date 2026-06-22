@@ -325,9 +325,10 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         }
         this.setDeviceEntry(deviceId, 'state', endpointName, message);
         this.state.set(topic, payload);
-        /* v8 ignore else -- @preserve: deferred until onConfigure when the platform is not configured yet. */
+        /* v8 ignore else -- deferred until onConfigure when the platform is not configured yet. */
         if (this.isConfigured) fireAndForget(this.updateHandler(topic, payload), this.log, `Failed to handle state update for device ${deviceId} on endpoint ${endpointName}`);
       } else if (subTopic === 'subscribe') {
+        // TODO: add a weak map of deviceId+endpointName to subscribed clusters/attributes so we can validate the subscribe
         this.log.info(
           `Received ${info.bgMagenta.black.bold` subscribe `} message for device ${info.bgCyan.black.bold` ${deviceId} `} endpoint ${info.bgGreen.black.bold` ${endpointName} `}`,
         );
@@ -337,7 +338,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
         }
         this.setDeviceEntry(deviceId, 'subscribe', endpointName, message);
         this.subscribe.set(topic, payload);
-        /* v8 ignore else -- @preserve: deferred until onConfigure when the platform is not configured yet. */
+        /* v8 ignore else -- deferred until onConfigure when the platform is not configured yet. */
         if (this.isConfigured)
           fireAndForget(this.subscribeHandler(topic, payload), this.log, `Failed to handle subscribe update for device ${deviceId} on endpoint ${endpointName}`);
       } else if (subTopic === 'write') {
@@ -513,7 +514,8 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
   }
 
   /**
-   * Handles an MQTT message with subTopic `subscribe` by subscribing to the specified clusters and attributes on the corresponding device, and publishing any updates to those attributes back to MQTT.
+   * Handles an MQTT message with subTopic `subscribe` by subscribing to the specified clusters and attributes on the corresponding device,
+   * and publishing any updates to those attributes back to MQTT.
    *
    * @param {string} topic - The MQTT topic on which the message was received. Expected format: `<baseTopic>/<deviceId>/subscribe/<endpointName>`.
    * @param {string} payload - The raw JSON string payload of the message, expected to be a map of cluster names to arrays of attribute names to subscribe to.
@@ -532,7 +534,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       return;
     }
     // TODO: add support for composed device types in the future if there is demand for it
-    /* v8 ignore else -- @preserve: defensive only cause we expect the endpointName to be 'root' for now since we don't support composed device types yet, but this leaves room for future expansion. */
+    /* v8 ignore else -- defensive only cause we expect the endpointName to be 'root' for now since we don't support composed device types yet, but this leaves room for future expansion. */
     if (endpointName === 'root') {
       const message = JSON.parse(payload);
       for (const clusterName of Object.keys(message)) {
