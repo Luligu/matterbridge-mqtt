@@ -10,6 +10,10 @@ If you like this project and find it useful, please consider giving it a star on
 
 ## [0.0.10] - Dev branch
 
+### Added
+
+- [platform]: Add snackbar messages.
+
 ### Changed
 
 - [package]: Update dependencies.
