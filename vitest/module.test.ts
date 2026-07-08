@@ -1,3 +1,9 @@
+/**
+ * @file vitest/module.test.ts
+ * @description This file contains the tests for the MqttPlatform class.
+ * @author Luca Liguori
+ */
+
 const NAME = 'MqttPlatform';
 const MATTER_PORT = 6000;
 

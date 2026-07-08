@@ -1,5 +1,6 @@
 /**
- * Stand-alone MQTT publish test for matterbridge-mqtt.
+ * @file src/test-publish.ts
+ * @description Stand-alone MQTT publish test for matterbridge-mqtt.
  *
  * Reads ~/.matterbridge/matterbridge-mqtt.config.json, connects to the
  * configured MQTT broker, and publishes retained config state subscribe messages
@@ -12,14 +13,12 @@
  *   --filter <name>   Only publish devices whose name contains <name>.
  *   --update          Publish a changed state to the state topic of each device (state change only).
  *   --delete          Publish empty retained payloads to clear the topics instead of publishing config/state/subscribe.
- *
- * @file test-publish.ts
  * @author Luca Liguori
  * @created 2026-06-08
  * @version 1.0.0
  * @license Apache-2.0
  *
- * Copyright 2026 Luca Liguori.
+ * Copyright 2026, 2027, 2028 Luca Liguori.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +35,8 @@
 
 /* v8 ignore file -- @preserve: stand-alone MQTT publish test script */
 
-// oxlint-disable no-console unicorn/no-process-exit
+/* oxlint-disable no-console */
+/* oxlint-disable unicorn/no-process-exit */
 
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';

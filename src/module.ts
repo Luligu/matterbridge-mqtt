@@ -1,13 +1,12 @@
 /**
- * This file contains the MqttPlatform plugin entry point, platform configuration interface, and the MqttPlatform class.
- *
- * @file module.ts
+ * @file src/module.ts
+ * @description This file contains the MqttPlatform plugin entry point, platform configuration interface, and the MqttPlatform class.
  * @author Luca Liguori
  * @created 2025-11-13
  * @version 1.0.0
  * @license Apache-2.0
  *
- * Copyright 2025, 2026 Luca Liguori.
+ * Copyright 2025, 2026, 2027 Luca Liguori.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

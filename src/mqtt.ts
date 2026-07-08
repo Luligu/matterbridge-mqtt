@@ -1,13 +1,12 @@
 /**
- * This file contains the MqttService class that wraps the mqtt client for use by MqttPlatform.
- *
- * @file mqtt.ts
+ * @file src/mqtt.ts
+ * @description This file contains the MqttService class that wraps the mqtt client for use by MqttPlatform.
  * @author Luca Liguori
  * @created 2026-05-14
  * @version 1.0.0
  * @license Apache-2.0
  *
- * Copyright 2026 Luca Liguori.
+ * Copyright 2026, 2027, 2028 Luca Liguori.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
