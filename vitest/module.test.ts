@@ -1,3 +1,9 @@
+/**
+ * @file vitest/module.test.ts
+ * @description This file contains the tests for the MqttPlatform class.
+ * @author Luca Liguori
+ */
+
 const NAME = 'MqttPlatform';
 const MATTER_PORT = 6000;
 
@@ -90,7 +96,7 @@ describe('MqttPlatform', () => {
 
   it('should throw error in load when version is not valid', () => {
     expect(() => initializePlugin({ ...matterbridge, matterbridgeVersion: '1.0.0' }, log, config)).toThrow(
-      'This plugin requires Matterbridge version >= "3.9.1". Please update Matterbridge to the latest version in the frontend.',
+      'This plugin requires Matterbridge version >= "3.9.0". Please update Matterbridge to the latest version in the frontend.',
     );
   });
 

@@ -1,3 +1,9 @@
+/**
+ * @file vitest/mqtt.test.ts
+ * @description This file contains the tests for the MqttService class.
+ * @author Luca Liguori
+ */
+
 const NAME = 'MqttService';
 
 import { loggerDebugSpy, loggerErrorSpy, loggerWarnSpy, setupTest } from 'matterbridge/vitest-utils';
