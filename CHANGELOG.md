@@ -29,16 +29,18 @@ If you like this project and find it useful, please consider giving it a star on
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
-## [0.0.11] - Dev branch
+## [0.0.11] - 2026-07-17
+
+### Breaking changes
+
+- [matterbridge]: Require matterbridge v.3.9.0.
 
 ### Changed
 
 - [package]: Apply uniform style.
 - [package]: Upgrade package.
 - [package]: Update dependencies.
-- [package]: Bump `@typescript/native-preview` to v.7.0.0-dev.20260622.1.
-- [package]: Bump `oxlint` to v.1.71.0.
-- [package]: Bump `oxfmt` to v.0.56.0.
+- [toolchain]: Migrate to the native toolchain (tsgo + oxlint + oxfmt + vitest). Replace ESLint/Prettier with Oxc, migrate the unit tests from Jest to Vitest, and move them from `src/` to `vitest/`.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
