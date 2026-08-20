@@ -107,7 +107,9 @@ Dev containers have networking limitations depending on the host OS and Docker s
       ],
       // Settings for the VS Code environment specific to the dev container (overrides user and workspace settings)
       "settings": {
-        "terminal.integrated.defaultProfile.linux": "bash"
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "oxc.useExecPath": true,
+        "vitest.nodeExecutable": "/proc/self/exe"
       }
     }
   }
