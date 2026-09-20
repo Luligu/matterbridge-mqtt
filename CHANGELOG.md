@@ -34,23 +34,27 @@ If you like this project and find it useful, please consider giving it a star on
 
 ### Breaking changes
 
-- [matterbridge]: Require matterbridge v.3.10.0 with matter v.1.6.0.
+- [matterbridge]: Require matterbridge v.3.10.10 with matter v.1.6.0.
 
 ### Added
 
+- [devcontainer]: Add [`Dev Container`](.devcontainer/README.md) v.2.2.0 with dual Node and Bun runtime support.
+- [agents]: Add a [`shared setup`](.agents/README.md) for all agents: OpenAI Codex, Claude Code, GitHub Copilot and Google Gemini / Antigravity.
 - [chip]: Add chip-test toolchain agents instruction and chip-test runner.
 - [frontend]: Add plugin-frontend agents instructions.
 
 ### Changed
 
-- [package]: Bump `oxfmt` to v.0.65.0.
-- [package]: Bump `oxlint` to v.1.80.0.
-- [package]: Bump `oxlint-tsgolint` to v.7.0.2001.
-- [package]: Bump `vitest` to v.4.1.11.
-- [package]: Bump `@types/node` to v.26.4.0.
-- [package]: Update agents configs.
-- [devcontainer]: Bump `Dev Container` to v.1.2.0.
-- [vscode]: Bump `settings` to v.1.0.10.
+- [package]: Upgrade package.
+- [package]: Bump `node-ansi-logger` to v.3.3.1.
+- [package]: Bump `node-persist-manager` to v.2.1.1.
+- [package]: Bump `oxfmt` to v.0.68.0.
+- [package]: Bump `oxlint` to v.1.83.0.
+- [package]: Bump `oxlint-tsgolint` to v.7.0.2002.
+- [package]: Bump `vitest` to v.5.0.1.
+- [package]: Bump `@vitest/coverage-v8` to v.5.0.1.
+- [package]: Bump `@types/node` to v.26.6.2.
+- [package]: Bump `typescript` to v.7.0.2.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
