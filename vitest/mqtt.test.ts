@@ -6,7 +6,7 @@
 
 const NAME = 'MqttService';
 
-import { loggerDebugSpy, loggerErrorSpy, loggerWarnSpy, setupTest } from 'matterbridge/vitest-utils';
+import { loggerDebugSpy, loggerErrorSpy, loggerWarnSpy, setupTest } from 'matterbridge/test-utils/vitest';
 import type { IPublishPacket } from 'mqtt';
 
 import type { MqttPlatformConfig } from '../src/module.js';

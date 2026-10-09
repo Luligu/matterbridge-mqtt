@@ -17,17 +17,24 @@ import { readFileSync } from 'node:fs';
 
 import type { PlatformMatterbridge } from 'matterbridge';
 import { LogLevel } from 'matterbridge/logger';
-import { waiter } from 'matterbridge/utils';
-import { log, loggerDebugSpy, loggerErrorSpy, loggerInfoSpy, loggerLogSpy, loggerWarnSpy, setDebug, setupTest } from 'matterbridge/vitest-utils';
 import {
   addMatterbridge,
   createServerNode,
   createTestEnvironment,
   destroyTestEnvironment,
   getMatterbridge,
+  log,
+  loggerDebugSpy,
+  loggerErrorSpy,
+  loggerInfoSpy,
+  loggerLogSpy,
+  loggerWarnSpy,
+  setDebug,
+  setupTest,
   startServerNode,
   stopServerNode,
-} from 'matterbridge/vitest-utils/matter';
+} from 'matterbridge/test-utils/vitest';
+import { waiter } from 'matterbridge/utils';
 import type { IPublishPacket } from 'mqtt';
 
 import initializePlugin, { MqttPlatform, type MqttPlatformConfig } from '../src/module.js';
