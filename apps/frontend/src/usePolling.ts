@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /** The state returned by {@link usePolling}. */
 export interface PollState<T> {
@@ -14,12 +14,14 @@ export interface PollState<T> {
  * @returns {PollState<T>} The latest fetched data and the last error message, if any.
  */
 export function usePolling<T>(fetcher: () => Promise<T>, intervalMs: number): PollState<T> {
-  const [data, setData] = useState<T | undefined>(undefined);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const [data, setData] = useState<T | undefined>();
+  const [error, setError] = useState<string | undefined>();
 
   // Keep the latest fetcher without resetting the interval on every render.
   const fetcherRef = useRef(fetcher);
-  fetcherRef.current = fetcher;
+  useLayoutEffect(() => {
+    fetcherRef.current = fetcher;
+  }, [fetcher]);
 
   useEffect(() => {
     let active = true;
