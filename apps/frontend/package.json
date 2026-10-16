@@ -19,7 +19,7 @@
     "deepClean": "node ../../scripts/deep-clean.mjs",
     "reset": "npm run deepClean && npm run softReset",
     "softReset": "npm install --no-fund --no-audit && npm prune --no-fund --no-audit && npm run build && npm run typecheck",
-    "checkDependencies": "npx --yes --package npm-check-updates ncu && npm run softReset",
+    "checkDependencies": "npx --yes --package npm-check-updates ncu",
     "updateDependencies": "npx --yes --package npm-check-updates ncu -u && npm run softReset",
     "runMeBeforePublish": "npm run format && npm run lint && npm run build && npm run typecheck"
   },
