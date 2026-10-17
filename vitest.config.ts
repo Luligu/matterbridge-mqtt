@@ -1,4 +1,4 @@
-// vitest.config.ts 2.0.8
+// vitest.config.ts 2.0.9
 
 // This Vitest configuration is designed for a TypeScript project.
 
@@ -15,6 +15,8 @@ export default defineConfig({
     restoreMocks: false,
     environment: 'node',
     maxWorkers: '100%',
+    reporters: ['default', 'junit'],
+    outputFile: { junit: '.cache/vitest/junit.xml' },
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage/vitest',
