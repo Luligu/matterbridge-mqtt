@@ -30,11 +30,11 @@ If you like this project and find it useful, please consider giving it a star on
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
-## [0.0.12] - Dev branch
+## [0.1.0] - 2026-10-23
 
 ### Breaking changes
 
-- [matterbridge]: Require matterbridge v.3.10.10 with matter v.1.6.0.
+- [matterbridge]: Require matterbridge v.3.11.0 with matter v.1.6.1.
 
 ### Added
 
@@ -71,6 +71,7 @@ If you like this project and find it useful, please consider giving it a star on
 - [package]: Bump `@vitest/coverage-v8` to v.5.0.5.
 - [package]: Bump `@types/node` to v.26.6.5.
 - [package]: Bump `typescript` to v.7.0.2.
+- [package]: Bump `mqtt` to v.5.16.1.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
