@@ -78,7 +78,7 @@ export function DevicesTable({ devices }: { devices: ApiDevice[] }) {
   const [expanded, setExpanded] = useState<ExpandedCell | null>(null);
 
   const toggle = (deviceId: string, kind: CellKind) => {
-    setExpanded((prev) => (prev && prev.deviceId === deviceId && prev.kind === kind ? null : { deviceId, kind }));
+    setExpanded((prev) => (prev?.deviceId === deviceId && prev.kind === kind ? null : { deviceId, kind }));
   };
 
   if (devices.length === 0) {
