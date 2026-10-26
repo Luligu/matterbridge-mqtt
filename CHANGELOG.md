@@ -32,6 +32,18 @@ If you like this project and find it useful, please consider giving it a star on
 
 ## [0.1.1] - Dev branch
 
+### Changed
+
+- [platform]: Uniform the constructor, onStart, onConfigure and onShutdown log messages.
+- [frontend]: Update plugin-frontend agents instructions to v.1.0.2: build API URLs from `import.meta.env.BASE_URL` for Home Assistant Ingress and open the frontend with a trailing slash.
+- [agents]: Update `.codex/config.toml` to v.1.0.6: document the intentional `:workspace` default profile.
+- [vscode]: Pack tasks in `.vscode/tasks.json` use `mb-run --pack local`; Docker install tasks download the install script before running it.
+- [scripts]: Update `git-sync-dev.mjs` to v.2.1.0: stop when origin/dev has commits the local dev lacks.
+- [scripts]: Update `prepublish-clean.mjs` to v.2.2.0: also delete the devDependencies, scripts and automator fields from package.json, replacing `npm pkg delete` in `prepublishOnly`.
+- [package]: Use `npm-check-updates@latest` in the frontend `checkDependencies` and `updateDependencies` scripts.
+- [package]: Bump `oxlint-tsgolint` to v.7.0.2005.
+- [package]: Bump frontend `vite` to v.8.3.5.
+
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
 ## [0.1.0] - 2026-10-23

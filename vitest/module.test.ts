@@ -115,14 +115,14 @@ describe('MqttPlatform', () => {
     // @ts-ignore Accessing private property for testing
     mqttService = platform.mqtt;
     expect(mqttService).toBeInstanceOf(MqttService);
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Initializing platform: ${config.name}`);
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Finished initializing platform: ${config.name}`);
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Initializing platform ${config.name}...`);
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Platform ${config.name} initialized successfully`);
   });
 
-  it('should call onStart with reason', async () => {
-    await platform.onStart('Test reason');
-    expect(loggerInfoSpy).toHaveBeenCalledWith('Starting platform: Test reason');
-    expect(loggerInfoSpy).toHaveBeenCalledWith('Finished starting platform');
+  it('should call onStart without reason', async () => {
+    await platform.onStart();
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Starting platform ${config.name} with reason: no reason provided...`);
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Platform ${config.name} started successfully`);
   });
 
   it('should create a light device', async () => {
@@ -201,19 +201,20 @@ describe('MqttPlatform', () => {
     platform.state.clear();
     platform.subscribe.clear();
     await platform.onConfigure();
-    expect(loggerInfoSpy).toHaveBeenCalledWith('Configuring platform...');
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Configuring platform ${config.name}...`);
     expect(loggerDebugSpy).toHaveBeenCalledWith('Setting states...');
     expect(loggerDebugSpy).toHaveBeenCalledWith('Setting subscribes...');
-    expect(loggerInfoSpy).toHaveBeenCalledWith('Finished configuring platform.');
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Platform ${config.name} configured successfully`);
   });
 
   it('should call onShutdown with reason', async () => {
     config.unregisterOnShutdown = false;
     await platform.onShutdown('Test reason');
     config.unregisterOnShutdown = true;
-    await platform.onShutdown('Test reason');
-    expect(loggerInfoSpy).toHaveBeenCalledWith('Shutting down platform: Test reason');
-    expect(loggerInfoSpy).toHaveBeenCalledWith('Finished shutting down platform');
+    await platform.onShutdown();
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Shutting down platform ${config.name} with reason: Test reason...`);
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Shutting down platform ${config.name} with reason: no reason provided...`);
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Platform ${config.name} shut down successfully`);
   });
 
   describe('mqttTopicParser', () => {
@@ -584,10 +585,10 @@ describe('MqttPlatform', () => {
 
     it('should log info when state and subscribe entries are empty', async () => {
       await platform.onConfigure();
-      expect(loggerInfoSpy).toHaveBeenCalledWith('Configuring platform...');
+      expect(loggerInfoSpy).toHaveBeenCalledWith(`Configuring platform ${config.name}...`);
       expect(loggerDebugSpy).toHaveBeenCalledWith('Setting states...');
       expect(loggerDebugSpy).toHaveBeenCalledWith('Setting subscribes...');
-      expect(loggerInfoSpy).toHaveBeenCalledWith('Finished configuring platform.');
+      expect(loggerInfoSpy).toHaveBeenCalledWith(`Platform ${config.name} configured successfully`);
     });
 
     it('should replay stored state through updateHandler', async () => {

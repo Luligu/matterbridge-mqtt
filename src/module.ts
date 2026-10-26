@@ -150,15 +150,15 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       throw new Error(`This plugin requires Matterbridge version >= "3.11.0". Please update Matterbridge to the latest version in the frontend.`);
     }
 
-    this.log.info(`Initializing platform: ${this.config.name}`);
+    this.log.info(`Initializing platform ${this.config.name}...`);
 
     this.mqtt = new MqttService(this.config);
 
-    this.log.info(`Finished initializing platform: ${this.config.name}`);
+    this.log.info(`Platform ${this.config.name} initialized successfully`);
   }
 
   override async onStart(reason?: string): Promise<void> {
-    this.log.info(`Starting platform: ${reason}`);
+    this.log.info(`Starting platform ${this.config.name} with reason: ${reason ?? 'no reason provided'}...`);
 
     // Clear the select since we will be re-populating it based on the MQTT messages we receive, and we want to avoid any stale entries from previous runs
     await this.ready;
@@ -203,12 +203,12 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
 
     await this.mqtt.connect();
 
-    this.log.info(`Finished starting platform`);
+    this.log.info(`Platform ${this.config.name} started successfully`);
   }
 
   override async onConfigure(): Promise<void> {
     await super.onConfigure();
-    this.log.info('Configuring platform...');
+    this.log.info(`Configuring platform ${this.config.name}...`);
     this.log.debug('Setting states...');
     for (const [topic, payload] of this.state.entries()) {
       await this.updateHandler(topic, payload);
@@ -217,15 +217,15 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
     for (const [topic, payload] of this.subscribe.entries()) {
       await this.subscribeHandler(topic, payload);
     }
-    this.log.info('Finished configuring platform.');
+    this.log.info(`Platform ${this.config.name} configured successfully`);
   }
 
   override async onShutdown(reason?: string): Promise<void> {
     await super.onShutdown(reason);
-    this.log.info(`Shutting down platform: ${reason}`);
+    this.log.info(`Shutting down platform ${this.config.name} with reason: ${reason ?? 'no reason provided'}...`);
     await this.mqtt.close();
     if (this.config.unregisterOnShutdown) await this.unregisterAllDevices();
-    this.log.info('Finished shutting down platform');
+    this.log.info(`Platform ${this.config.name} shut down successfully`);
   }
 
   /**
