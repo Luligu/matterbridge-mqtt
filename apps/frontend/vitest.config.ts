@@ -1,5 +1,3 @@
-// vitest.config.ts v.2.0.8
-
 // apps/frontend/vitest.config.ts v.2.0.8
 
 // Vitest configuration file for a Vite / React / TypeScript frontend.
@@ -27,8 +25,8 @@ export default defineConfig({
       thresholds: {
         lines: 100,
         functions: 100,
-        branches: 90,
-        statements: 90,
+        branches: 100,
+        statements: 100,
       },
     },
   },
