@@ -70,7 +70,6 @@
     "node": true,
     "plugin": true,
     "vitest": true,
-    "native": true,
     "git": false,
     "version": false,
     "publish": false,
