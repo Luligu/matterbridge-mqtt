@@ -15,7 +15,7 @@ const MATTER_PORT = 6000;
 
 import { readFileSync } from 'node:fs';
 
-import type { PlatformMatterbridge } from 'matterbridge';
+import { bridgedNode, MatterbridgeEndpoint, type PlatformMatterbridge } from 'matterbridge';
 import { LogLevel } from 'matterbridge/logger';
 import {
   addMatterbridge,
@@ -205,6 +205,37 @@ describe('MqttPlatform', () => {
     expect(loggerDebugSpy).toHaveBeenCalledWith('Setting states...');
     expect(loggerDebugSpy).toHaveBeenCalledWith('Setting subscribes...');
     expect(loggerInfoSpy).toHaveBeenCalledWith(`Platform ${config.name} configured successfully`);
+  });
+
+  it('should update every device logger when the logger level changes', async () => {
+    const devices = [new MatterbridgeEndpoint(bridgedNode, { id: 'logger-first' }), new MatterbridgeEndpoint(bridgedNode, { id: 'logger-second' })];
+    devices[0].log.logLevel = LogLevel.DEBUG;
+    devices[1].log.logLevel = LogLevel.INFO;
+    const getDevicesSpy = vi.spyOn(platform, 'getDevices').mockReturnValue(devices);
+
+    try {
+      await platform.onChangeLoggerLevel(LogLevel.ERROR);
+      for (const device of devices) {
+        expect(device.log.logLevel).toBe(LogLevel.ERROR);
+      }
+
+      await platform.onChangeLoggerLevel(LogLevel.DEBUG);
+      for (const device of devices) {
+        expect(device.log.logLevel).toBe(LogLevel.DEBUG);
+      }
+    } finally {
+      getDevicesSpy.mockRestore();
+    }
+  });
+
+  it('should resolve when the logger level changes with no registered devices', async () => {
+    const getDevicesSpy = vi.spyOn(platform, 'getDevices').mockReturnValue([]);
+
+    try {
+      await expect(platform.onChangeLoggerLevel(LogLevel.DEBUG)).resolves.toBeUndefined();
+    } finally {
+      getDevicesSpy.mockRestore();
+    }
   });
 
   it('should call onShutdown with reason', async () => {

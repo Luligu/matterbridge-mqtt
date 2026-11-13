@@ -32,10 +32,11 @@ If you like this project and find it useful, please consider giving it a star on
 
 ---
 
-## [0.1.1] - Dev branch
+## [1.0.0] - Dev branch
 
 ### Changed
 
+- [platform]: Propagate logger level changes to all registered devices.
 - [platform]: Uniform the constructor, onStart, onConfigure and onShutdown log messages.
 - [frontend]: Update plugin-frontend agents instructions to v.1.0.2: build API URLs from `import.meta.env.BASE_URL` for Home Assistant Ingress and open the frontend with a trailing slash.
 - [codex]: Update `.codex/config.toml` to v.1.0.8.
