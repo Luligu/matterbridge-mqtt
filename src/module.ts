@@ -239,9 +239,11 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
    */
   // oxlint-disable-next-line typescript/require-await
   override async onChangeLoggerLevel(logLevel: LogLevel): Promise<void> {
+    this.log.info(`Changing logger level for platform ${this.config.name} to ${logLevel}...`);
     for (const device of this.getDevices()) {
       device.log.logLevel = logLevel;
     }
+    this.log.info(`Platform ${this.config.name} logger level changed successfully`);
   }
 
   /**
