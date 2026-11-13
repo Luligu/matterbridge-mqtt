@@ -3,7 +3,7 @@
  * @description This file contains the MqttPlatform plugin entry point, platform configuration interface, and the MqttPlatform class.
  * @author Luca Liguori
  * @created 2025-11-13
- * @version 1.0.0
+ * @version 1.0.1
  * @license Apache-2.0
  *
  * Copyright 2025, 2026, 2027 Luca Liguori.
@@ -32,7 +32,7 @@ import {
   type PlatformConfig,
   type PlatformMatterbridge,
 } from 'matterbridge';
-import { type AnsiLogger, db, debugStringify, info, warn } from 'matterbridge/logger';
+import { type AnsiLogger, debugStringify, info, type LogLevel, warn } from 'matterbridge/logger';
 import type { AtLeastOne } from 'matterbridge/matter';
 import type { BridgedDeviceBasicInformation, PowerSource } from 'matterbridge/matter/clusters';
 import { fireAndForget, inspectError } from 'matterbridge/utils';
@@ -150,15 +150,21 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       throw new Error(`This plugin requires Matterbridge version >= "3.11.0". Please update Matterbridge to the latest version in the frontend.`);
     }
 
-    this.log.info(`Initializing platform: ${this.config.name}`);
+    this.log.info(`Initializing platform ${this.config.name}...`);
 
     this.mqtt = new MqttService(this.config);
 
-    this.log.info(`Finished initializing platform: ${this.config.name}`);
+    this.log.info(`Platform ${this.config.name} initialized successfully`);
   }
 
+  /**
+   * Starts the platform, registers MQTT event handlers and connects to the broker
+   *
+   * @param {string} [reason] The reason for starting the platform.
+   * @returns {Promise<void>} Resolves when platform startup is complete.
+   */
   override async onStart(reason?: string): Promise<void> {
-    this.log.info(`Starting platform: ${reason}`);
+    this.log.info(`Starting platform ${this.config.name} with reason: ${reason ?? 'no reason provided'}...`);
 
     // Clear the select since we will be re-populating it based on the MQTT messages we receive, and we want to avoid any stale entries from previous runs
     await this.ready;
@@ -203,12 +209,17 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
 
     await this.mqtt.connect();
 
-    this.log.info(`Finished starting platform`);
+    this.log.info(`Platform ${this.config.name} started successfully`);
   }
 
+  /**
+   * Configures the platform and applies retained device states and subscriptions
+   *
+   * @returns {Promise<void>} Resolves when platform configuration is complete.
+   */
   override async onConfigure(): Promise<void> {
     await super.onConfigure();
-    this.log.info('Configuring platform...');
+    this.log.info(`Configuring platform ${this.config.name}...`);
     this.log.debug('Setting states...');
     for (const [topic, payload] of this.state.entries()) {
       await this.updateHandler(topic, payload);
@@ -217,15 +228,36 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
     for (const [topic, payload] of this.subscribe.entries()) {
       await this.subscribeHandler(topic, payload);
     }
-    this.log.info('Finished configuring platform.');
+    this.log.info(`Platform ${this.config.name} configured successfully`);
   }
 
+  /**
+   * Updates the logger level for all registered devices
+   *
+   * @param {LogLevel} logLevel The new logger level.
+   * @returns {Promise<void>} Resolves when all device logger levels have been updated.
+   */
+  // oxlint-disable-next-line typescript/require-await
+  override async onChangeLoggerLevel(logLevel: LogLevel): Promise<void> {
+    this.log.info(`Changing logger level of platform ${this.config.name} to ${logLevel}...`);
+    for (const device of this.getDevices()) {
+      device.log.logLevel = logLevel;
+    }
+    this.log.info(`Platform ${this.config.name} logger level changed successfully to ${logLevel}`);
+  }
+
+  /**
+   * Shuts down the platform, closes MQTT and optionally unregisters all devices
+   *
+   * @param {string} [reason] The reason for shutting down the platform.
+   * @returns {Promise<void>} Resolves when platform shutdown is complete.
+   */
   override async onShutdown(reason?: string): Promise<void> {
     await super.onShutdown(reason);
-    this.log.info(`Shutting down platform: ${reason}`);
+    this.log.info(`Shutting down platform ${this.config.name} with reason: ${reason ?? 'no reason provided'}...`);
     await this.mqtt.close();
     if (this.config.unregisterOnShutdown) await this.unregisterAllDevices();
-    this.log.info('Finished shutting down platform');
+    this.log.info(`Platform ${this.config.name} shut down successfully`);
   }
 
   /**
@@ -386,6 +418,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
       id: deviceId,
     });
     device.configUrl = '/plugins/matterbridge-mqtt/?id=' + encodeURIComponent(deviceId);
+    device.log.logLevel = this.log.logLevel;
 
     /** Bridged Device Basic Information Cluster - BridgedDeviceBasicInformationServer */
     device.createDefaultBridgedDeviceBasicInformationClusterServer(
@@ -625,13 +658,12 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
   // oxlint-disable-next-line typescript/require-await -- onFetch must be async to honor the MatterbridgePlatform override contract
   override async onFetch(method: string, path?: string, query?: Record<string, unknown>, body?: unknown): Promise<unknown> {
     /* v8 ignore next -- @preserve: this log is useful for debugging but would be too verbose for tests, so we exclude it from coverage. */
-    this.log.debug(
-      `onFetch called: method=${method} path=${path ?? 'none'} query=${query ? debugStringify(query) : 'none'}${db} body=${body ? debugStringify(body) : 'none'}${db}`,
-    );
+    this.log.debug(`Fetching ${method} ${path ?? '/'} on platform ${this.config.name}...`);
     if (method === 'GET' && path === 'devices') return this.getApiDevices();
     if (method === 'GET' && path === 'messages') return this.getApiMessages();
     if (method === 'GET' && path === 'outgoing') return this.getApiOutgoing();
     if (method === 'GET' && path === 'state' && query?.id && typeof query.id === 'string') return this.getApiState(query.id);
+    this.log.debug(`Platform ${this.config.name} fetch ${method} ${path ?? '/'} completed successfully`);
     return undefined;
   }
 

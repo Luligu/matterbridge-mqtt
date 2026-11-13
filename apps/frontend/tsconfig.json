@@ -1,27 +1,18 @@
-// tsconfig.json 1.0.0
+// apps/frontend/tsconfig.json v.1.0.0
 
-// This TypeScript configuration is designed for a Vite/React/TypeScript frontend using ESM modules.
+// This TypeScript configuration is designed for a Vite / React / TypeScript frontend.
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "moduleResolution": "bundler",
+    "types": ["vite/client", "vitest/globals"],
     "jsx": "react-jsx",
-    "useDefineForClassFields": true,
-    "resolveJsonModule": true,
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "noEmit": true,
     "strict": true,
-    "noImplicitOverride": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
-    "types": ["vite/client"]
+    "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vitest/**/*.ts", "vitest/**/*.tsx", "vite.config.ts", "vitest.config.ts"]
 }
