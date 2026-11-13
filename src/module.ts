@@ -32,7 +32,7 @@ import {
   type PlatformConfig,
   type PlatformMatterbridge,
 } from 'matterbridge';
-import { type AnsiLogger, db, debugStringify, info, type LogLevel, warn } from 'matterbridge/logger';
+import { type AnsiLogger, debugStringify, info, type LogLevel, warn } from 'matterbridge/logger';
 import type { AtLeastOne } from 'matterbridge/matter';
 import type { BridgedDeviceBasicInformation, PowerSource } from 'matterbridge/matter/clusters';
 import { fireAndForget, inspectError } from 'matterbridge/utils';
@@ -239,11 +239,11 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
    */
   // oxlint-disable-next-line typescript/require-await
   override async onChangeLoggerLevel(logLevel: LogLevel): Promise<void> {
-    this.log.info(`Changing logger level for platform ${this.config.name} to ${logLevel}...`);
+    this.log.info(`Changing logger level of platform ${this.config.name} to ${logLevel}...`);
     for (const device of this.getDevices()) {
       device.log.logLevel = logLevel;
     }
-    this.log.info(`Platform ${this.config.name} logger level changed successfully`);
+    this.log.info(`Platform ${this.config.name} logger level changed successfully to ${logLevel}`);
   }
 
   /**
@@ -658,13 +658,12 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
   // oxlint-disable-next-line typescript/require-await -- onFetch must be async to honor the MatterbridgePlatform override contract
   override async onFetch(method: string, path?: string, query?: Record<string, unknown>, body?: unknown): Promise<unknown> {
     /* v8 ignore next -- @preserve: this log is useful for debugging but would be too verbose for tests, so we exclude it from coverage. */
-    this.log.debug(
-      `onFetch called: method=${method} path=${path ?? 'none'} query=${query ? debugStringify(query) : 'none'}${db} body=${body ? debugStringify(body) : 'none'}${db}`,
-    );
+    this.log.debug(`Fetching ${method} ${path ?? '/'} on platform ${this.config.name}...`);
     if (method === 'GET' && path === 'devices') return this.getApiDevices();
     if (method === 'GET' && path === 'messages') return this.getApiMessages();
     if (method === 'GET' && path === 'outgoing') return this.getApiOutgoing();
     if (method === 'GET' && path === 'state' && query?.id && typeof query.id === 'string') return this.getApiState(query.id);
+    this.log.debug(`Platform ${this.config.name} fetch ${method} ${path ?? '/'} completed successfully`);
     return undefined;
   }
 

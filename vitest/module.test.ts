@@ -923,7 +923,7 @@ describe('MqttPlatform', () => {
       await expect(platform.onFetch('GET', 'unknown')).resolves.toBeUndefined();
       await expect(platform.onFetch('GET')).resolves.toBeUndefined();
       await expect(platform.onFetch('POST', 'devices')).resolves.toBeUndefined();
-      expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/onFetch called/));
+      expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringMatching(/Fetching /));
     });
 
     it('should record outgoing messages published on the write path', () => {
