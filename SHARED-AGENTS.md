@@ -52,7 +52,7 @@ The testing pointers for both Claude Code and Copilot cover `**/*.test.ts`, `**/
 | `.claude/rules/chip-tests/chip-tests.instructions.md`           | CHIP harness guide — scoped to the CHIP files listed below   |
 | `.claude/skills/verify-agent-context/SKILL.md`                  | Skill invocable as `/verify-agent-context`                   |
 
-The CHIP pointers for both Claude Code and Copilot cover `chipTests.json`, `chipTests.md`, `chipTests.log`, `chipTestsSummary.log`, `scripts/run-chip-tests.mjs`, and `.github/workflows/chip-tests.yml`.
+The CHIP pointers for both Claude Code and Copilot cover `chipTests.json`, `chipTests.md`, `chipTests.log`, `chipTestsSummary.log`, `scripts/run-chip-test.mjs`, and `.github/workflows/chip-tests.yml`.
 
 ### Codex instructions
 

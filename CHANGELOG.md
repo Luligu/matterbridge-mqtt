@@ -34,11 +34,21 @@ If you like this project and find it useful, please consider giving it a star on
 
 ## [1.0.1] - Dev branch
 
-<a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
+### Changed
+
+- [package]: Bump `@vitest/coverage-v8` to v.5.1.1.
+- [package]: Bump `oxfmt` to v.0.79.0.
+- [package]: Bump `oxlint` to v.1.94.0.
+- [package]: Bump `vitest` to v.5.1.1.
+- [agents]: Update `.agents/rules/chip-tests.instructions.md`, `.claude/rules/chip-tests/chip-tests.instructions.md` and `.github/instructions/chip-tests/chip-tests.instructions.md` to v.1.0.1.
+- [agents]: Update `AGENTS.md` to v.1.0.12.
+- [config]: Update `SHARED-AGENTS.md` to v.1.0.0.
 
 ### Fixed
 
 - [mqtt]: Propagate the platform log level to the MQTT service.
+
+<a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
 ## [1.0.0] - 2026-11-14
 
