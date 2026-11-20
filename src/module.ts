@@ -153,6 +153,7 @@ export class MqttPlatform extends MatterbridgeDynamicPlatform {
     this.log.info(`Initializing platform ${this.config.name}...`);
 
     this.mqtt = new MqttService(this.config);
+    this.mqtt.setLogLevel(this.log.logLevel);
 
     this.log.info(`Platform ${this.config.name} initialized successfully`);
   }

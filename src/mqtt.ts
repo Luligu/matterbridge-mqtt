@@ -94,6 +94,10 @@ export class MqttService extends EventEmitter {
     this.config = config;
   }
 
+  setLogLevel(level: LogLevel): void {
+    this.log.logLevel = level;
+  }
+
   /**
    * Builds an `IClientOptions` object from the platform configuration.
    *
