@@ -33,10 +33,10 @@
  * limitations under the License.
  */
 
-/* v8 ignore file -- @preserve: stand-alone MQTT publish test script */
-
 /* oxlint-disable no-console */
 /* oxlint-disable unicorn/no-process-exit */
+
+/* v8 ignore file -- @preserve: stand-alone MQTT publish test script */
 
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
